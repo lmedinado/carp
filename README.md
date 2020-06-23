@@ -1,2 +1,2 @@
 # carp
-A constexpr command-line argument parser
+A constexpr, non-allocating command-line argument parser.
