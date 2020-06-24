@@ -35,11 +35,10 @@
 #include <cerrno>
 #include <charconv>
 #include <cstdlib>
-#include <iomanip>
+#include <iterator>
 #include <numeric>
 #include <optional>
 #include <ostream>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -99,7 +98,7 @@ struct str_to_num<T, std::void_t<decltype(std::from_chars(nullptr, nullptr, std:
 
 template <typename T, typename = void>
 struct unwrapper {
-    static std::optional<T> get(int argc, char *const *argv) {
+    static std::optional<T> get(int argc, char const *const *argv) {
         if (argc != 1)
             return std::nullopt;
 
@@ -109,7 +108,7 @@ struct unwrapper {
 
 template <typename T>
 struct unwrapper<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
-    static std::optional<T> get(int argc, char *const *argv) {
+    static std::optional<T> get(int argc, char const *const *argv) {
         if (argc != 1)
             return std::nullopt;
         auto val = std::string_view(argv[0]);
@@ -119,7 +118,7 @@ struct unwrapper<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
 
 namespace detail {
 template <typename T, size_t N, size_t... I>
-std::optional<std::array<T, N>> unwrap_array_impl(char *const *argv,
+std::optional<std::array<T, N>> unwrap_array_impl(char const *const *argv,
                                                   std::index_sequence<I...>) {
     bool ok = true;
     std::optional<T> opt;
@@ -133,7 +132,7 @@ std::optional<std::array<T, N>> unwrap_array_impl(char *const *argv,
 
 template <typename T, size_t N>
 struct unwrapper<std::array<T, N>> {
-    static std::optional<std::array<T, N>> get(int argc, char *const *argv) {
+    static std::optional<std::array<T, N>> get(int argc, char const *const *argv) {
         if (static_cast<size_t>(argc) < N)
             return std::nullopt;
         return detail::unwrap_array_impl<T, N>(argv, std::make_index_sequence<N>{});
@@ -146,7 +145,7 @@ private:
     struct labeled_arg {
         std::string_view name;
         int argc;
-        char *const *argv;
+        char const *const *argv;
     };
 
     struct arg {
@@ -155,7 +154,7 @@ private:
 
         int nargs = 1;
 
-        constexpr labeled_arg parse(int argc, char *const *&argv) const {
+        constexpr labeled_arg parse(int argc, char const *const *&argv) const {
 
             argc = std::min(argc, nargs);
             auto cur_argv = argv;
@@ -238,7 +237,7 @@ public:
         }
     };
 
-    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char *const * argv) const {
+    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char const *const * argv) const {
 
         parsed_args res;
 
@@ -279,7 +278,6 @@ private:
     constexpr auto make_usage() const {
         return [&](auto &os, std::string_view program_name) -> decltype(os) {
             using std::size;
-            auto flags = os.flags();
 
             os << "  Usage: ";
             auto const last_slash = program_name.find_last_of("/\\");
@@ -301,9 +299,10 @@ private:
                 if (ai == args.begin() + n_positionals)
                     os << "\n\n  Options:";
 
-                os << "\n\t  " << std::left << std::setw(max_size + 1) << ai->name << ai->desc;
+                os << "\n\t  " << ai->name;
+                std::fill_n(std::ostreambuf_iterator(os), max_size + 1 - size(ai->name), ' ');
+                os << ai->desc;
             }
-            os.flags(flags);
 
             return os << "\n";
         };
