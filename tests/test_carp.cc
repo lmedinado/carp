@@ -13,8 +13,9 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
     char const *const argv[] = {"program", "0", "1", "2", "3"};
     int argc = std::size(argv);
 
-    auto [ok, args] = parser.parse(argc, argv);
-
+    auto [ok_, args_] = parser.parse(argc, argv);
+    auto ok = ok_;
+    auto args = args_;
 
     SECTION("string_views") {
         auto a = args["a"] | "";
