@@ -17,6 +17,8 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
     auto ok = ok_;
     auto args = args_;
 
+    REQUIRE(ok);
+
     SECTION("string_views") {
         auto a = args["a"] | "";
         auto b = args["b"] | "";
@@ -73,6 +75,8 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
         int argc = size(argv);
         auto [ok, args] = parser.parse(argc, argv);
 
+        REQUIRE(ok);
+
         REQUIRE(args["-s"] == f[0]);
         REQUIRE(args["-t"] == f[1]);
         REQUIRE(args["-u"] == f[2]);
@@ -115,5 +119,129 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
 
     SECTION("Four set") {
         do_tests_for({true, true, true, true}, "program", "-s", "-t", "-u", "-v");
+    }
+}
+
+TEST_CASE("Parsing numbers", "[numeric]") {
+    using carp::detail::str_to_num;
+    using namespace std::literals::string_view_literals;
+    using std::pair;
+
+    auto check = [](auto x, auto t) {
+        using T = decltype(t);
+        auto result = str_to_num<T>::get(x.data(), x.data() + x.size());
+        REQUIRE((result && *result == t && std::is_same_v<T &, decltype(*result)>));
+    };
+
+    SECTION("Small signed integers") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+            for (auto [xs, xv] : {
+                     pair("-100"sv, T{-100}),
+                     pair("-2"sv, T{-2}),
+                     pair("-1"sv, T{-1}),
+                     pair("0"sv, T{0}),
+                     pair("1"sv, T{1}),
+                     pair("2"sv, T{2}),
+                     pair("100"sv, T{100}),
+                 }) {
+                check(xs, xv);
+            }
+        };
+
+        SECTION("ints") { do_tests_for(int{}); }
+        SECTION("longs") { do_tests_for(long{}); }
+        SECTION("llongs") { do_tests_for((long long){}); }
+        SECTION("shorts") { do_tests_for(short{}); }
+        SECTION("schars") { do_tests_for((signed char){}); }
+        SECTION("floats") { do_tests_for(float{}); }
+        SECTION("doubles") { do_tests_for(double{}); }
+    }
+
+    SECTION("Small unsigned integers") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+            for (auto [xs, xv] : {
+                     pair("0"sv, T{0}),
+                     pair("1"sv, T{1}),
+                     pair("2"sv, T{2}),
+                     pair("100"sv, T{100}),
+                     pair("200"sv, T{200}),
+                 }) {
+                check(xs, xv);
+            }
+        };
+
+        SECTION("uints") { do_tests_for(unsigned{}); }
+        SECTION("ulongs") { do_tests_for((unsigned long){}); }
+        SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+        SECTION("ushorts") { do_tests_for((unsigned short){}); }
+        SECTION("uchars") { do_tests_for((unsigned char){}); }
+    }
+
+    SECTION("Small floats") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+            for (auto [xs, xv] : {
+                     pair("0."sv, T{0.}),
+                     pair("0.0"sv, T{0.}),
+                     pair(".1"sv, T{0.1}),
+                     pair("1.2"sv, T{1.2}),
+                     pair("2.4"sv, T{2.4}),
+                     pair("100.0"sv, T{100}),
+                     pair("2000000.0"sv, T{2000000}),
+                 }) {
+                check(xs, xv);
+            }
+        };
+
+        SECTION("floats") { do_tests_for(float{}); }
+        SECTION("doubles") { do_tests_for(double{}); }
+    }
+
+    SECTION("Overflow", "[overflow]") {
+
+        auto overflow_check = [](auto x, auto t, auto big) {
+            using T = decltype(t);
+            using big_type = decltype(big);
+            auto result = str_to_num<T>::get(x.data(), x.data() + x.size());
+            REQUIRE((!result ||
+                     (std::numeric_limits<T>::max() == std::numeric_limits<big_type>::max() &&
+                      std::numeric_limits<T>::min() == std::numeric_limits<big_type>::min())));
+            REQUIRE(std::is_same_v<T &, decltype(*result)>);
+        };
+
+        SECTION("Signed integer overflow", "[int_overflow]") {
+            using big_type = long long;
+            auto pbig = std::to_string(std::numeric_limits<big_type>::max());
+            auto nbig = std::to_string(std::numeric_limits<big_type>::min());
+
+            for (auto big : {pbig, nbig}) {
+                overflow_check(pbig, (signed char){}, big_type{});
+                overflow_check(pbig, short{}, big_type{});
+                overflow_check(pbig, int{}, big_type{});
+                overflow_check(pbig, long{}, big_type{});
+                overflow_check(pbig, (long long){}, big_type{});
+                overflow_check(pbig + "0", big_type{}, big_type{});
+            }
+        }
+
+        SECTION("Unsigned integer overflow", "[uint_overflow]") {
+            using big_type = unsigned long long;
+            auto pbig = std::to_string(std::numeric_limits<big_type>::max());
+            auto nbig = std::to_string(std::numeric_limits<big_type>::min());
+
+            for (auto big : {pbig, nbig}) {
+                overflow_check(pbig, (unsigned char){}, big_type{});
+                overflow_check(pbig, (unsigned short){}, big_type{});
+                overflow_check(pbig, unsigned{}, big_type{});
+                overflow_check(pbig, (unsigned long){}, big_type{});
+                overflow_check(pbig, (long long){}, big_type{});
+                overflow_check(pbig + "0", big_type{}, big_type{});
+            }
+        }
     }
 }
