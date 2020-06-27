@@ -154,13 +154,13 @@ private:
 
             argc = std::min(argc, nargs);
             auto cur_argv = argv;
+            argv += nargs - 1;
 
             if (nargs > 1 && is_switch(name)) {
                 argc -= 1;
                 cur_argv += 1;
             }
 
-            argv += nargs - 1;
             return labeled_arg{name, argc, cur_argv};
         }
 
@@ -207,15 +207,11 @@ public:
                 return arg ? unwrapper<T>::get(arg->argc, arg->argv) : std::nullopt;
             }
 
-            std::string_view operator|(char const *default_value) const {
-                return arg ? *unwrapper<std::string_view>::get(arg->argc, arg->argv)
-                           : default_value;
-            }
-
             operator bool() const { return !!arg; }
 
             arg_proxy &operator=(arg_proxy &&) = delete;
         };
+
         constexpr arg_proxy operator[](std::string_view name) const {
             auto it = std::find_if(args.begin(), args.end(),
                                    [&](auto &r) { return r.name == name; });
@@ -290,14 +286,14 @@ private:
     }
 
     static constexpr bool is_switch(std::string_view word) {
-        return word.size() >= 2 && word[0] == '-' && !isdigit(word[1]);
+        return word.size() >= 2 && word[0] == '-' && !is_digit(word[1]);
     }
 
     static constexpr bool is_valid(std::string_view word) {
-        return !word.empty() && !isdigit(word[0]) && word.find(' ') == std::string_view::npos;
+        return !word.empty() && !is_digit(word[0]) && word.find(' ') == std::string_view::npos;
     }
 
-    static constexpr bool isdigit(char c) { return c >= '0' && c <= '9'; }
+    static constexpr bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
     size_t find_switch(std::string_view word) const {
         return std::distance(begin(args),

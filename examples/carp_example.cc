@@ -5,66 +5,97 @@
 int main(int argc, char *argv[]) {
 
     constexpr auto parser =
-        carp::parser({{"a", "'a', a positional argument"},
-                      {"b", "'b', a positional argument"},
-                      {"c", "'c', a positional argument"},
-                      {"d", "'d', a positional argument"},
-                      {"e", "'e', a positional argument"},
-                      {"-asdasd", "'asdasd', a switch", 1},
-                      {"-arr", "'arr', a switch with args", 2},
-                      {"-arrm", "'arrm', a switch with stringy args", 2},
-                      {"-f-no-exceptions", "'f-no-exceptions', a switch"}});
+        carp::parser({{"a", "'a', a required integer"},
+                      {"b", "'b', a string"},
+                      {"c", "'c', an integer"},
+                      {"d", "'d', a double"},
+                      {"e", "'e', a float"},
+                      {"-s", "'s', a boolean switch"},
+                      {"-t", "'t', a switch taking an extra argument", 1},
+                      {"-u", "'u', a switch taking two extra arguments", 2},
+                      {"-v", "'v', a switch taking two extra arguments", 2}});
 
     auto [ok, args] = parser.parse(argc, argv);
 
-    std::cout << "\nnow doing argc/argv\n";
-    std::cout << "\ndone, ok = " << std::boolalpha << ok << "\n\n";
-    std::cout << parser.usage(argv[0]);
+    if(!ok) {
+        std::cout << "\nToo many positional arguments, or unknown options.";
+    }
 
-    auto a = args["a"] | 0;
-    auto b = args["b"] | 1.3;
-    auto c = args["c"] | 2.5f;
-    auto d = args["d"] | "zebra";
-    auto e = args["e"] | carp::required<int>;
-    auto asdasd = args["-asdasd"] | 0;
-    auto arr = args["-arr"] | std::array{0, 0};
-    auto arrm = args["-arrm"] | std::array{"asds", "asdasd"};
-    auto fnoexceptions = args["-f-no-exceptions"] | "none";
+    auto a = args["a"] | carp::required<int>;
+    auto b = args["b"] | "zebra";
+    auto c = args["c"] | 0;
+    auto d = args["d"] | 1.3;
+    auto e = args["e"] | 2.5f;
 
-    if (a)
+    auto s = args["-s"];
+    auto t = args["-t"] | "none";
+    auto u = args["-u"] | std::array{0, 0};
+    auto v = args["-v"] | std::array{"tiger", "auroch"};
+
+    if (a) {
         std::cout << "\na = " << *a;
-    else
-        std::cout << "\nmissing a.";
-    std::cout << ", b = " << *b;
-    std::cout << ", c = " << *c;
-    std::cout << ", d = " << d;
-    if (e)
+    } else {
+        std::cout << "\nI need a valid value for 'a'.\n";
+        ok = false;
+    }
+
+    if (b) {
+        std::cout << ", b = " << *b;
+    } else {
+        std::cout << "\nI need a valid value for 'b'.";
+        ok = false;
+    }
+
+    if (c) {
+        std::cout << ", c = " << *c;
+    } else {
+        std::cout << "\nI need a valid value for 'c'.";
+        ok = false;
+    }
+    
+    if (d) {
+        std::cout << ", d = " << *d;
+    } else {
+        std::cout << "\nI need a valid value for 'd'.";
+        ok = false;
+    }
+    
+    if (e) {
         std::cout << ", e = " << *e;
-    else
+    } else {
         std::cout << "\nmissing e.";
-    if (asdasd)
-        std::cout << "\n-asdasd = " << *asdasd;
+        ok = false;
+    }
+
+
+    std::cout << ", -s = " << s;
+    std::cout << ", -s = " << args["-s"];
+
+    if (t)
+        std::cout << "\n-t = " << *t;
     else
-        std::cout << "\nmissing -asdasd";
+        std::cout << "\nmissing -t";
 
-    if (arr) {
-        std::cout << ", -arr = {";
-        for (auto a : *arr)
+    if (u) {
+        std::cout << ", -u = {";
+        for (auto a : *u)
+            std::cout << a << ", ";
+        std::cout << "}";
+    } else {
+        std::cout << "\nmissing -u";
+    }
+    if (v) {
+        std::cout << ", -v = {";
+        for (auto a : *v)
             std::cout << a << ", ";
         std::cout << "}";
     } else
-        std::cout << "\nmissing -arr";
-    if (arrm) {
-        std::cout << ", -arrm = {";
-        for (auto a : *arrm)
-            std::cout << a << ", ";
-        std::cout << "}";
-    } else
-        std::cout << "\nmissing -arrm";
+        std::cout << "\nmissing -v";
 
-    std::cout << ", -f-no-exceptions = " << fnoexceptions;
-    std::cout << ", -f-no-exceptions = " << args["-f-no-exceptions"];
+    if(!ok) {
+        std::cout << parser.usage(argv[0]);
+        return 1;
+    }
 
-   // std::cout << "\n\x1b[38;2;255;100;0mTRUECOLOR\x1b[0m\n";
     return 0;
 }

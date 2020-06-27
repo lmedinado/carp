@@ -1,6 +1,8 @@
 #include <carp.h>
 #include <catch.hpp>
 
+using namespace std::literals::string_view_literals;
+
 TEST_CASE("Basic positional functionality", "[basic_positional]") {
 
     constexpr auto parser = carp::parser({
@@ -19,16 +21,28 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
 
     REQUIRE(ok);
 
-    SECTION("string_views") {
+    SECTION("const chars") {
         auto a = args["a"] | "";
         auto b = args["b"] | "";
         auto c = args["c"] | "";
         auto d = args["d"] | "";
 
-        REQUIRE((a == "0" && std::is_same_v<std::string_view, decltype(a)>));
-        REQUIRE((b == "1" && std::is_same_v<std::string_view, decltype(b)>));
-        REQUIRE((c == "2" && std::is_same_v<std::string_view, decltype(c)>));
-        REQUIRE((d == "3" && std::is_same_v<std::string_view, decltype(d)>));
+        REQUIRE((a && *a == "0" && std::is_same_v<char const *&, decltype(*a)>));
+        REQUIRE((b && *b == "1" && std::is_same_v<char const *&, decltype(*b)>));
+        REQUIRE((c && *c == "2" && std::is_same_v<char const *&, decltype(*c)>));
+        REQUIRE((d && *d == "3" && std::is_same_v<char const *&, decltype(*d)>));
+    }
+
+    SECTION("string_views") {
+        auto a = args["a"] | ""sv;
+        auto b = args["b"] | ""sv;
+        auto c = args["c"] | ""sv;
+        auto d = args["d"] | ""sv;
+
+        REQUIRE((a && *a == "0" && std::is_same_v<std::string_view &, decltype(*a)>));
+        REQUIRE((b && *b == "1" && std::is_same_v<std::string_view &, decltype(*b)>));
+        REQUIRE((c && *c == "2" && std::is_same_v<std::string_view &, decltype(*c)>));
+        REQUIRE((d && *d == "3" && std::is_same_v<std::string_view &, decltype(*d)>));
     }
 
     auto do_tests_for = [&](auto t) {
@@ -39,10 +53,10 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
         auto c = args["c"] | T{2};
         auto d = args["d"] | T{3};
 
-        REQUIRE((*a == T{0} && std::is_same_v<T &, decltype(*a)>));
-        REQUIRE((*b == T{1} && std::is_same_v<T &, decltype(*b)>));
-        REQUIRE((*c == T{2} && std::is_same_v<T &, decltype(*c)>));
-        REQUIRE((*d == T{3} && std::is_same_v<T &, decltype(*d)>));
+        REQUIRE((a && *a == T{0} && std::is_same_v<T &, decltype(*a)>));
+        REQUIRE((b && *b == T{1} && std::is_same_v<T &, decltype(*b)>));
+        REQUIRE((c && *c == T{2} && std::is_same_v<T &, decltype(*c)>));
+        REQUIRE((d && *d == T{3} && std::is_same_v<T &, decltype(*d)>));
     };
 
     SECTION("ints") { do_tests_for(int{}); }
@@ -124,7 +138,6 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
 
 TEST_CASE("Parsing numbers", "[numeric]") {
     using carp::detail::str_to_num;
-    using namespace std::literals::string_view_literals;
     using std::pair;
 
     auto check = [](auto x, auto t) {
