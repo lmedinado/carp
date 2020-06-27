@@ -99,10 +99,7 @@ struct str_to_num<T, std::void_t<decltype(std::from_chars(nullptr, nullptr, std:
 template <typename T, typename = void>
 struct unwrapper {
     static std::optional<T> get(int argc, char const *const *argv) {
-        if (argc != 1)
-            return std::nullopt;
-
-        return std::optional<std::decay_t<T>>{argv[0]};
+        return (argc == 1) ? std::optional<std::decay_t<T>>{argv[0]} : std::nullopt;
     }
 };
 
@@ -116,32 +113,12 @@ struct unwrapper<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
     }
 };
 
-// template <>
-// struct unwrapper<char const *> {
-//     static std::optional<std::string_view> get(int argc, char const *const *argv) {
-//         if (argc != 1)
-//             return std::nullopt;
-//         return std::optional{std::string_view(argv[0])};
-//     }
-// };
-
-// template <>
-// struct unwrapper<std::string_view> {
-//     static std::optional<std::string_view> get(int argc, char const *const *argv) {
-//         if (argc != 1)
-//             return std::nullopt;
-//         return std::optional{std::string_view(argv[0])};
-//     }
-// };
-
 namespace detail {
 template <typename T, size_t N, size_t... I>
-auto unwrap_array_impl(char const *const *argv,
-                                                  std::index_sequence<I...>) {
-    using Tt = decltype(unwrapper<T>::get(1, argv));
+auto unwrap_array_impl(char const *const *argv, std::index_sequence<I...>) {
     bool ok = true;
-    Tt opt;
-    std::array<std::remove_reference_t<decltype(*opt)>, N> res{(opt = unwrapper<T>::get(1, &argv[I]), //
+    std::optional<T> opt;
+    std::array<T, N> res{(opt = unwrapper<T>::get(1, &argv[I]), //
                           ok = ok && opt,                       //
                           opt ? *opt : T{})...};
 
@@ -151,10 +128,10 @@ auto unwrap_array_impl(char const *const *argv,
 
 template <typename T, size_t N>
 struct unwrapper<std::array<T, N>> {
-    static auto get(int argc, char const *const *argv) {
-        // if (static_cast<size_t>(argc) < N)
-        //     return std::nullopt;
-        return (static_cast<size_t>(argc) >= N) ? detail::unwrap_array_impl<T, N>(argv, std::make_index_sequence<N>{}) : std::nullopt;
+    static std::optional<std::array<T, N>> get(int argc, char const *const *argv) {
+        return (static_cast<size_t>(argc) >= N)
+                   ? detail::unwrap_array_impl<T, N>(argv, std::make_index_sequence<N>{})
+                   : std::nullopt;
     }
 };
 
@@ -183,7 +160,7 @@ private:
                 cur_argv += 1;
             }
 
-            argv += nargs;
+            argv += nargs - 1;
             return labeled_arg{name, argc, cur_argv};
         }
 
@@ -222,8 +199,7 @@ public:
 
             template <typename T>
             auto operator|(T const &default_value) const {
-                //using return_type = std::remove_reference_t<decltype(*unwrapper<T>::get(0, arg->argv));
-                return arg ? unwrapper<std::decay_t<T>>::get(arg->argc, arg->argv) : default_value;
+                return arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv) : default_value;
             }
 
             template <typename T>
@@ -231,19 +207,9 @@ public:
                 return arg ? unwrapper<T>::get(arg->argc, arg->argv) : std::nullopt;
             }
 
-            std::string_view operator|(std::string_view default_value) const {
+            std::string_view operator|(char const *default_value) const {
                 return arg ? *unwrapper<std::string_view>::get(arg->argc, arg->argv) : default_value;
             }
-            std::string_view operator|(char const *default_value) const {
-                return operator|(std::string_view(default_value));
-            }
-
-            // template <size_t M>
-            // auto operator|(std::array<char const *, M> default_value)
-            //     -> std::optional<std::array<std::string_view, M>> const {
-            //     return operator|(
-            //         make_from_tuple<std::array<std::string_view, M>>(default_value));
-            // }
 
             operator bool() const { return !!arg; }
 
@@ -264,7 +230,7 @@ public:
         bool ok = true;
         size_t pos_i = 0;
 
-        for (auto it = argv + 1, end = argv + argc; it < end;) {
+        for (auto it = argv + 1, end = argv + argc; it < end; ++it) {
             auto const word = std::string_view(*it);
 
             size_t const ai = is_switch(word) ? find_switch(word) : pos_i++;
@@ -272,7 +238,7 @@ public:
             if (ai < N) {
                 res.args[ai] = args[ai].parse(end - it, it);
             } else { /* unrecognized switch or too many positionals */
-                ++it, ok = false;
+                ok = false;
             }
         }
 
@@ -341,18 +307,6 @@ private:
         return std::distance(begin(args),
                              std::find_if(begin(args) + n_positionals, end(args),
                                           [&](auto &s) { return s.name == word; }));
-    }
-
-    template <class T, class Tuple, std::size_t... I>
-    static constexpr T make_from_tuple_impl(Tuple &&t, std::index_sequence<I...>) {
-        return T{std::get<I>(std::forward<Tuple>(t))...};
-    }
-
-    template <class T, class Tuple>
-    static constexpr T make_from_tuple(Tuple &&t) {
-        return make_from_tuple_impl<T>(
-            std::forward<Tuple>(t),
-            std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{});
     }
 
     size_t n_positionals = 0, n_switches = 0;
