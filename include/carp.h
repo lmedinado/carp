@@ -164,7 +164,6 @@ private:
             return labeled_arg{name, argc, cur_argv};
         }
 
-    public:
         constexpr arg() = default;
         constexpr arg(std::string_view name, std::string_view desc, unsigned nargs = 0)
           : name(name), desc(desc), nargs(1 + nargs) {}
@@ -192,14 +191,15 @@ public:
 
     struct parsed_args {
 
-        std::array<labeled_arg, N> args = {};
+        std::array<labeled_arg, N> args;
 
         struct arg_proxy {
             labeled_arg const *arg = nullptr;
 
             template <typename T>
             auto operator|(T const &default_value) const {
-                return arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv) : default_value;
+                return arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv)
+                           : default_value;
             }
 
             template <typename T>
@@ -208,7 +208,8 @@ public:
             }
 
             std::string_view operator|(char const *default_value) const {
-                return arg ? *unwrapper<std::string_view>::get(arg->argc, arg->argv) : default_value;
+                return arg ? *unwrapper<std::string_view>::get(arg->argc, arg->argv)
+                           : default_value;
             }
 
             operator bool() const { return !!arg; }
@@ -223,13 +224,12 @@ public:
         }
     };
 
-    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char const *const * argv) const {
-
-        parsed_args res;
+    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char const *const *argv) const {
 
         bool ok = true;
-        size_t pos_i = 0;
+        parsed_args res;
 
+        size_t pos_i = 0;
         for (auto it = argv + 1, end = argv + argc; it < end; ++it) {
             auto const word = std::string_view(*it);
 
@@ -246,53 +246,49 @@ public:
     }
 
     auto usage(std::string_view program_name) const {
-        return usage_holder{program_name, make_usage()};
+        return usage_holder{program_name, this};
     }
 
 private:
     struct usage_holder {
-        template <typename stream>
-        friend stream &operator<<(stream &os, const usage_holder &uh) {
-            return uh.usage(os, uh.program_name);
-        }
-
         std::string_view program_name;
-        decltype(std::declval<parser>().make_usage()) usage;
+        parser const *p;
         usage_holder &operator=(usage_holder &&) = delete;
     };
 
-    constexpr auto make_usage() const {
-        return [&](auto &os, std::string_view program_name) -> decltype(os) {
-            using std::size;
+    template <typename stream>
+    friend stream &operator<<(stream &os, const usage_holder &uh) {
+        using std::size;
+        auto &p = *uh.p;
 
-            os << "  Usage: ";
-            auto const last_slash = program_name.find_last_of("/\\");
-            os << program_name.substr(last_slash + 1, program_name.size() - last_slash);
+        os << "  Usage: ";
+        auto const last_slash = uh.program_name.find_last_of("/\\");
+        os << uh.program_name.substr(last_slash + 1, uh.program_name.size() - last_slash);
 
-            if (n_switches > 0)
-                os << " [options]";
+        if (p.n_switches > 0)
+            os << " [options]";
 
-            for (auto pi = args.begin(); pi != args.begin() + n_positionals; ++pi)
-                os << " " << pi->name;
+        for (auto pi = p.args.begin(); pi != p.args.begin() + p.n_positionals; ++pi)
+            os << " " << pi->name;
 
-            auto max_size =
-                std::accumulate(args.begin(), args.end(), size_t{0},
-                                [](auto c, auto &a) { return std::max(c, size(a.name)); });
-            if (n_positionals)
-                os << "\n\n  Arguments:";
+        auto max_size =
+            std::accumulate(p.args.begin(), p.args.end(), size_t{0},
+                            [](auto c, auto &a) { return std::max(c, size(a.name)); });
+        if (p.n_positionals)
+            os << "\n\n  Arguments:";
 
-            for (auto ai = args.begin(); ai != args.end(); ++ai) {
-                if (ai == args.begin() + n_positionals)
-                    os << "\n\n  Options:";
+        for (auto ai = p.args.begin(); ai != p.args.end(); ++ai) {
+            if (ai == p.args.begin() + p.n_positionals)
+                os << "\n\n  Options:";
 
-                os << "\n\t  " << ai->name;
-                std::fill_n(std::ostreambuf_iterator(os), max_size + 1 - size(ai->name), ' ');
-                os << ai->desc;
-            }
+            os << "\n\t  " << ai->name;
+            std::fill_n(std::ostreambuf_iterator(os), max_size + 1 - size(ai->name), ' ');
+            os << ai->desc;
+        }
 
-            return os << "\n";
-        };
+        return os << "\n";
     }
+
     static constexpr bool is_switch(std::string_view word) {
         return word.size() >= 2 && word[0] == '-' && !isdigit(word[1]);
     }
