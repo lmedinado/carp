@@ -11,9 +11,9 @@ int main(int argc, char *argv[]) {
                       {"d", "'d', a double"},
                       {"e", "'e', a float"},
                       {"-s", "'s', a boolean switch"},
-                      {"-t", "'t', a switch taking an extra argument", 1},
-                      {"-u", "'u', a switch taking two extra arguments", 2},
-                      {"-v", "'v', a switch taking two extra arguments", 2}});
+                      {"-t", "'t', a switch taking a string as an extra argument", 1},
+                      {"-u", "'u', a switch taking two integers as extra arguments", 2},
+                      {"-v", "'v', a switch taking two strings as extra arguments", 2}});
 
     auto [ok, args] = parser.parse(argc, argv);
 
@@ -63,13 +63,12 @@ int main(int argc, char *argv[]) {
     if (e) {
         std::cout << ", e = " << *e;
     } else {
-        std::cout << "\nmissing e.";
+        std::cout << "\nI need a valid value for 'e'.";
         ok = false;
     }
 
 
-    std::cout << ", -s = " << s;
-    std::cout << ", -s = " << args["-s"];
+    std::cout << std::boolalpha <<", -s = " << s;
 
     if (t)
         std::cout << "\n-t = " << *t;
@@ -93,7 +92,7 @@ int main(int argc, char *argv[]) {
         std::cout << "\nmissing -v";
 
     if(!ok) {
-        std::cout << parser.usage(argv[0]);
+        std::cout << "\n" << parser.usage(argv[0]);
         return 1;
     }
 
