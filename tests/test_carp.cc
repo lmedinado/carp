@@ -1,6 +1,8 @@
 #include <carp.h>
 #include <catch.hpp>
 
+#include <iostream>
+
 using namespace std::literals::string_view_literals;
 
 TEST_CASE("Basic positional functionality", "[basic_positional]") {
@@ -598,82 +600,224 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
     using std::pair;
     using std::size;
 
-    auto check = [&](auto t, auto... argv_pack) {
-        using T = decltype(t);
-        char const *const argv[] = {argv_pack...};
-        int argc = size(argv);
-
-        const auto result = carp::unwrapper<T>::get(argc, argv);
-        REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
-    };
-
-    SECTION("Small signed integers") {
-
-        auto do_tests_for = [&](auto t) {
+    SECTION("Must succeed") {
+        auto check = [&](auto t, auto... argv_pack) {
             using T = decltype(t);
-            for (auto [xs, xv] : {
-                     pair("-100", T{-100}),
-                     pair("-2", T{-2}),
-                     pair("-1", T{-1}),
-                     pair("0", T{0}),
-                     pair("1", T{1}),
-                     pair("2", T{2}),
-                     pair("100", T{100}),
-                 }) {
-                check(xv, xs);
-            }
+            char const *const argv[] = {argv_pack...};
+            int argc = size(argv);
+
+            const auto result = carp::unwrapper<T>::get(argc, argv);
+            REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
         };
 
-        SECTION("ints") { do_tests_for(int{}); }
-        SECTION("longs") { do_tests_for(long{}); }
-        SECTION("llongs") { do_tests_for((long long){}); }
-        SECTION("shorts") { do_tests_for(short{}); }
-        SECTION("schars") { do_tests_for((signed char){}); }
-        SECTION("floats") { do_tests_for(float{}); }
-        SECTION("doubles") { do_tests_for(double{}); }
+        SECTION("Small signed integers") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+                for (auto [xs, xv] : {
+                         pair("-100", T{-100}),
+                         pair("-2", T{-2}),
+                         pair("-1", T{-1}),
+                         pair("0", T{0}),
+                         pair("1", T{1}),
+                         pair("2", T{2}),
+                         pair("100", T{100}),
+                     }) {
+                    check(xv, xs);
+                }
+            };
+
+            SECTION("ints") { do_tests_for(int{}); }
+            SECTION("longs") { do_tests_for(long{}); }
+            SECTION("llongs") { do_tests_for((long long){}); }
+            SECTION("shorts") { do_tests_for(short{}); }
+            SECTION("schars") { do_tests_for((signed char){}); }
+            SECTION("floats") { do_tests_for(float{}); }
+            SECTION("doubles") { do_tests_for(double{}); }
+        }
+
+        SECTION("Small unsigned integers") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+                for (auto [xs, xv] : {
+                         pair("0", T{0}),
+                         pair("1", T{1}),
+                         pair("2", T{2}),
+                         pair("100", T{100}),
+                         pair("200", T{200}),
+                     }) {
+                    check(xv, xs);
+                }
+            };
+
+            SECTION("uints") { do_tests_for(unsigned{}); }
+            SECTION("ulongs") { do_tests_for((unsigned long){}); }
+            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+            SECTION("ushorts") { do_tests_for((unsigned short){}); }
+            SECTION("uchars") { do_tests_for((unsigned char){}); }
+        }
+
+        SECTION("Small floats") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+                for (auto [xs, xv] : {
+                         pair("0.", T{0.}),
+                         pair("0.0", T{0.}),
+                         pair(".1", T{0.1}),
+                         pair("1.2", T{1.2}),
+                         pair("2.4", T{2.4}),
+                         pair("100.0", T{100}),
+                         pair("2000000.0", T{2000000}),
+                     }) {
+                    check(xv, xs);
+                }
+            };
+
+            SECTION("floats") { do_tests_for(float{}); }
+            SECTION("doubles") { do_tests_for(double{}); }
+        }
     }
 
-    SECTION("Small unsigned integers") {
-
-        auto do_tests_for = [&](auto t) {
+    SECTION("Must fail") {
+        auto check = [&](auto t, auto... argv_pack) {
             using T = decltype(t);
-            for (auto [xs, xv] : {
-                     pair("0", T{0}),
-                     pair("1", T{1}),
-                     pair("2", T{2}),
-                     pair("100", T{100}),
-                     pair("200", T{200}),
-                 }) {
-                check(xv, xs);
+            char const *const argv[] = {argv_pack...};
+            int argc = size(argv);
+
+            const auto result = carp::unwrapper<T>::get(argc, argv);
+            if (result) {
+                std::cout << "\nargv: ";
+                for (auto &av : argv)
+                    std::cout << av << ", ";
+                std::cout << "result:" << *result << "\n";
             }
+            REQUIRE((!result && std::is_same_v<T const &, decltype(*result)>));
         };
 
-        SECTION("uints") { do_tests_for(unsigned{}); }
-        SECTION("ulongs") { do_tests_for((unsigned long){}); }
-        SECTION("ullongs") { do_tests_for((unsigned long long){}); }
-        SECTION("ushorts") { do_tests_for((unsigned short){}); }
-        SECTION("uchars") { do_tests_for((unsigned char){}); }
-    }
+        SECTION("Signed integers") {
 
-    SECTION("Small floats") {
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+                for (auto x : {
+                         "-100u",
+                         "-2u",
+                         "-u1",
+                         "u0",
+                         "1u",
+                         "u2",
+                         "1u00",
+                         "as",
+                         "100.",
+                         ".1",
+                         "0xff1",
+                         "abc",
+                         "u2",
+                         "200000000000000000000000000000000000000000000",
+                     }) {
+                    check(T{}, x);
+                }
+            };
 
-        auto do_tests_for = [&](auto t) {
-            using T = decltype(t);
-            for (auto [xs, xv] : {
-                     pair("0.", T{0.}),
-                     pair("0.0", T{0.}),
-                     pair(".1", T{0.1}),
-                     pair("1.2", T{1.2}),
-                     pair("2.4", T{2.4}),
-                     pair("100.0", T{100}),
-                     pair("2000000.0", T{2000000}),
-                 }) {
-                check(xv, xs);
+            SECTION("ints") { do_tests_for(int{}); }
+            SECTION("longs") { do_tests_for(long{}); }
+            SECTION("llongs") { do_tests_for((long long){}); }
+            SECTION("shorts") { do_tests_for(short{}); }
+            SECTION("schars") { do_tests_for((signed char){}); }
+        }
+
+        SECTION("Unsigned integers") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+                for (auto x : {
+                         "-100",
+                         "-2",
+                         "-1",
+                         "-100u",
+                         "-2u",
+                         "-u1",
+                         "u0",
+                         "1u",
+                         "u2",
+                         "1u00",
+                         "as",
+                         "100.",
+                         ".1",
+                         "0xff1",
+                         "abc",
+                         "u2",
+                         "200000000000000000000000000000000000000000000",
+                     }) {
+                    check(T{}, x);
+                }
+            };
+
+            SECTION("uints") { do_tests_for(unsigned{}); }
+            SECTION("ulongs") { do_tests_for((unsigned long){}); }
+            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+            SECTION("ushorts") { do_tests_for((unsigned short){}); }
+            SECTION("uchars") { do_tests_for((unsigned char){}); }
+        }
+
+        SECTION("floats") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+                for (auto x : {
+                         "-100u",
+                         "-2u",
+                         "-u1",
+                         "u0",
+                         "1u",
+                         "u2",
+                         "1u00",
+                         "as",
+                         "0x100.",
+                         ".1x",
+                         "0xff1",
+                         "abc",
+                         "u2",
+                         "0.c",
+                         "0.f0",
+                         "f.1",
+                         "1g.2",
+                         "a2.4",
+                         "100.0a",
+                         "c2000000.0",
+                     }) {
+                    check(T{}, x);
+                }
+            };
+
+            SECTION("floats") { do_tests_for(float{}); }
+            SECTION("doubles") { do_tests_for(double{}); }
+
+            SECTION("Large floats") {
+                check(float{}, "200000000000000000000000000000000000000000000");
+                check(float{},
+                      "999999999999999999999999999999999999999999999999999999999999999");
+                check(float{},
+                      ("1" + std::to_string(std::numeric_limits<float>::max())).c_str());
             }
-        };
-
-        SECTION("floats") { do_tests_for(float{}); }
-        SECTION("doubles") { do_tests_for(double{}); }
+            SECTION("Large doubles") {
+                check(double{},
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999");
+                check(double{},
+                      ("1" + std::to_string(std::numeric_limits<double>::max())).c_str());
+            }
+        }
     }
 }
 
