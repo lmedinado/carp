@@ -593,13 +593,161 @@ TEST_CASE("All together", "[general]") {
     }
 }
 
+/* unwrapper tests */
+TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
+    using std::pair;
+    using std::size;
+
+    auto check = [&](auto t, auto... argv_pack) {
+        using T = decltype(t);
+        char const *const argv[] = {argv_pack...};
+        int argc = size(argv);
+
+        const auto result = carp::unwrapper<T>::get(argc, argv);
+        REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
+    };
+
+    SECTION("Small signed integers") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+            for (auto [xs, xv] : {
+                     pair("-100", T{-100}),
+                     pair("-2", T{-2}),
+                     pair("-1", T{-1}),
+                     pair("0", T{0}),
+                     pair("1", T{1}),
+                     pair("2", T{2}),
+                     pair("100", T{100}),
+                 }) {
+                check(xv, xs);
+            }
+        };
+
+        SECTION("ints") { do_tests_for(int{}); }
+        SECTION("longs") { do_tests_for(long{}); }
+        SECTION("llongs") { do_tests_for((long long){}); }
+        SECTION("shorts") { do_tests_for(short{}); }
+        SECTION("schars") { do_tests_for((signed char){}); }
+        SECTION("floats") { do_tests_for(float{}); }
+        SECTION("doubles") { do_tests_for(double{}); }
+    }
+
+    SECTION("Small unsigned integers") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+            for (auto [xs, xv] : {
+                     pair("0", T{0}),
+                     pair("1", T{1}),
+                     pair("2", T{2}),
+                     pair("100", T{100}),
+                     pair("200", T{200}),
+                 }) {
+                check(xv, xs);
+            }
+        };
+
+        SECTION("uints") { do_tests_for(unsigned{}); }
+        SECTION("ulongs") { do_tests_for((unsigned long){}); }
+        SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+        SECTION("ushorts") { do_tests_for((unsigned short){}); }
+        SECTION("uchars") { do_tests_for((unsigned char){}); }
+    }
+
+    SECTION("Small floats") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+            for (auto [xs, xv] : {
+                     pair("0.", T{0.}),
+                     pair("0.0", T{0.}),
+                     pair(".1", T{0.1}),
+                     pair("1.2", T{1.2}),
+                     pair("2.4", T{2.4}),
+                     pair("100.0", T{100}),
+                     pair("2000000.0", T{2000000}),
+                 }) {
+                check(xv, xs);
+            }
+        };
+
+        SECTION("floats") { do_tests_for(float{}); }
+        SECTION("doubles") { do_tests_for(double{}); }
+    }
+}
+
+/* unwrapper tests */
+TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
+    using std::pair;
+    using std::size;
+
+    auto check = [&](auto t, auto... argv_pack) {
+        using T = decltype(t);
+        char const *const argv[] = {argv_pack...};
+        int argc = size(argv);
+
+        const auto result = carp::unwrapper<T>::get(argc, argv);
+        REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
+    };
+
+    SECTION("Small integers") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+
+            check(std::array{T{1}}, "1");
+            check(std::array{T{1}, T{2}}, "1", "2");
+            check(std::array{T{1}, T{2}, T{3}}, "1", "2", "3");
+            check(std::array{T{1}, T{2}, T{3}, T{4}}, "1", "2", "3", "4");   
+        };
+
+        SECTION("ints") { do_tests_for(int{}); }
+        SECTION("uints") { do_tests_for(unsigned{}); }
+        SECTION("longs") { do_tests_for(long{}); }
+        SECTION("ulongs") { do_tests_for((unsigned long){}); }
+        SECTION("llongs") { do_tests_for((long long){}); }
+        SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+        SECTION("shorts") { do_tests_for(short{}); }
+        SECTION("ushorts") { do_tests_for((unsigned short){}); }
+        SECTION("chars") { do_tests_for(char{}); }
+        SECTION("schars") { do_tests_for((signed char){}); }
+        SECTION("uchars") { do_tests_for((unsigned char){}); }
+        SECTION("floats") { do_tests_for(float{}); }
+        SECTION("doubles") { do_tests_for(double{}); }
+    }
+
+    SECTION("Small floats") {
+
+        auto do_tests_for = [&](auto t) {
+            using T = decltype(t);
+
+            check(std::array{T{1.1}}, "1.1");
+            check(std::array{T{1.1}, T{1.2}}, "1.1", "1.2");
+            check(std::array{T{1.1}, T{1.2}, T{1.3}}, "1.1", "1.2", "1.3");
+            check(std::array{T{1.1}, T{1.2}, T{1.3}, T{1.4}}, "1.1", "1.2", "1.3", "1.4");   
+        };
+
+        SECTION("floats") { do_tests_for(float{}); }
+        SECTION("doubles") { do_tests_for(double{}); }
+    }
+
+    SECTION("strings") {
+
+        check(std::array{"e1"}, "e1");
+        check(std::array{"e1", "e2"}, "e1", "e2");
+        check(std::array{"e1", "e2", "e3"}, "e1", "e2", "e3");
+        check(std::array{"e1", "e2", "e3", "e4"}, "e1", "e2", "e3", "e4");
+    }
+}
+
 TEST_CASE("Parsing numbers", "[numeric]") {
     using carp::detail::str_to_num;
     using std::pair;
 
     auto check = [](auto x, auto t) {
         using T = decltype(t);
-        auto result = str_to_num<T>::get(x.data(), x.data() + x.size());
+        auto result = carp::detail::str_to_num<T>::get(x.data(), x.data() + x.size());
         REQUIRE((result && *result == t && std::is_same_v<T &, decltype(*result)>));
     };
 
