@@ -229,7 +229,8 @@ public:
         for (auto it = argv + 1, end = argv + argc; it < end; ++it) {
             auto const word = std::string_view(*it);
 
-            size_t const ai = is_switch(word) ? find_switch(word) : pos_i++;
+            size_t const ai =
+                is_switch(word) ? find_switch(word) : pos_i < n_positionals ? pos_i++ : N;
 
             if (ai < N) {
                 res.args[ai] = args[ai].parse(end - it, it);

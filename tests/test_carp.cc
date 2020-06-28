@@ -136,6 +136,52 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
     }
 }
 
+TEST_CASE("All together", "[general]") {
+
+    constexpr auto parser =
+        carp::parser({{"a", "'a', a required integer"},
+                      {"b", "'b', a string"},
+                      {"c", "'c', an integer"},
+                      {"d", "'d', a double"},
+                      {"e", "'e', a float"},
+                      {"-s", "'s', a boolean switch"},
+                      {"-t", "'t', a switch taking a string as an extra argument", 1},
+                      {"-u", "'u', a switch taking two integers as extra arguments", 2},
+                      {"-v", "'v', a switch taking two strings as extra arguments", 2}});
+
+    SECTION("must fail") {
+
+        char const *const argv[] = {"program", "10", "zaga", "6",  "3.14159", "4.3",
+                                    "7",       "7",  "-s",   "7",  "-t",      "3",
+                                    "-u",      "1",  "2",    "-v", "asd",     "asd"};
+        int argc = std::size(argv);
+
+        auto [ok, args] = parser.parse(argc, argv);
+
+        auto a = args["a"] | carp::required<int>;
+        auto b = args["b"] | "zebra";
+        auto c = args["c"] | 0;
+        auto d = args["d"] | 1.3;
+        auto e = args["e"] | 2.5f;
+
+        auto s = args["-s"];
+        auto t = args["-t"] | "none";
+        auto u = args["-u"] | std::array{0, 0};
+        auto v = args["-v"] | std::array{"tiger", "auroch"};
+
+        REQUIRE(ok == false);
+        REQUIRE((a && *a == 10));
+        REQUIRE((b && *b == "zaga"));
+        REQUIRE((c && *c == 6));
+        REQUIRE((d && *d == 3.14159));
+        REQUIRE((e && *e == 4.3f));
+        REQUIRE((s && *(s | "none") == "-s"));
+        REQUIRE((t && *t == "3"));
+        REQUIRE((u && *u == std::array{1, 2}));
+        REQUIRE((v && *v == std::array{"asd", "asd"}));
+    }
+}
+
 TEST_CASE("Parsing numbers", "[numeric]") {
     using carp::detail::str_to_num;
     using std::pair;
