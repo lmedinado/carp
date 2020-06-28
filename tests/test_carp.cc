@@ -1,6 +1,5 @@
 #include <carp.h>
 #include <catch.hpp>
-
 #include <iostream>
 
 using namespace std::literals::string_view_literals;
@@ -687,12 +686,6 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
             int argc = size(argv);
 
             const auto result = carp::unwrapper<T>::get(argc, argv);
-            if (result) {
-                std::cout << "\nargv: ";
-                for (auto &av : argv)
-                    std::cout << av << ", ";
-                std::cout << "result:" << *result << "\n";
-            }
             REQUIRE((!result && std::is_same_v<T const &, decltype(*result)>));
         };
 
@@ -766,26 +759,10 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
             auto do_tests_for = [&](auto t) {
                 using T = decltype(t);
                 for (auto x : {
-                         "-100u",
-                         "-2u",
-                         "-u1",
-                         "u0",
-                         "1u",
-                         "u2",
-                         "1u00",
-                         "as",
-                         "0x100.",
-                         ".1x",
-                         "0xff1",
-                         "abc",
-                         "u2",
-                         "0.c",
-                         "0.f0",
-                         "f.1",
-                         "1g.2",
-                         "a2.4",
-                         "100.0a",
-                         "c2000000.0",
+                         "-100u", "-2u",  "-u1",  "u0",     "1u",
+                         "u2",    "1u00", "as",   "0x100.", ".1x",
+                         "0xff1", "abc",  "u2",   "0.c",    "0.f0",
+                         "f.1",   "1g.2", "a2.4", "100.0a", "c2000000.0",
                      }) {
                     check(T{}, x);
                 }
@@ -826,62 +803,186 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
     using std::pair;
     using std::size;
 
-    auto check = [&](auto t, auto... argv_pack) {
-        using T = decltype(t);
-        char const *const argv[] = {argv_pack...};
-        int argc = size(argv);
-
-        const auto result = carp::unwrapper<T>::get(argc, argv);
-        REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
-    };
-
-    SECTION("Small integers") {
-
-        auto do_tests_for = [&](auto t) {
+    SECTION("Must succeed") {
+        auto check = [&](auto t, auto... argv_pack) {
             using T = decltype(t);
+            char const *const argv[] = {argv_pack...};
+            int argc = size(argv);
 
-            check(std::array{T{1}}, "1");
-            check(std::array{T{1}, T{2}}, "1", "2");
-            check(std::array{T{1}, T{2}, T{3}}, "1", "2", "3");
-            check(std::array{T{1}, T{2}, T{3}, T{4}}, "1", "2", "3", "4");   
+            const auto result = carp::unwrapper<T>::get(argc, argv);
+            REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
         };
 
-        SECTION("ints") { do_tests_for(int{}); }
-        SECTION("uints") { do_tests_for(unsigned{}); }
-        SECTION("longs") { do_tests_for(long{}); }
-        SECTION("ulongs") { do_tests_for((unsigned long){}); }
-        SECTION("llongs") { do_tests_for((long long){}); }
-        SECTION("ullongs") { do_tests_for((unsigned long long){}); }
-        SECTION("shorts") { do_tests_for(short{}); }
-        SECTION("ushorts") { do_tests_for((unsigned short){}); }
-        SECTION("chars") { do_tests_for(char{}); }
-        SECTION("schars") { do_tests_for((signed char){}); }
-        SECTION("uchars") { do_tests_for((unsigned char){}); }
-        SECTION("floats") { do_tests_for(float{}); }
-        SECTION("doubles") { do_tests_for(double{}); }
+        SECTION("integers") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+
+                check(std::array{T{1}}, "1");
+                check(std::array{T{1}, T{2}}, "1", "2");
+                check(std::array{T{1}, T{2}, T{3}}, "1", "2", "3");
+                check(std::array{T{1}, T{2}, T{3}, T{4}}, "1", "2", "3", "4");
+            };
+
+            SECTION("ints") { do_tests_for(int{}); }
+            SECTION("uints") { do_tests_for(unsigned{}); }
+            SECTION("longs") { do_tests_for(long{}); }
+            SECTION("ulongs") { do_tests_for((unsigned long){}); }
+            SECTION("llongs") { do_tests_for((long long){}); }
+            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+            SECTION("shorts") { do_tests_for(short{}); }
+            SECTION("ushorts") { do_tests_for((unsigned short){}); }
+            SECTION("chars") { do_tests_for(char{}); }
+            SECTION("schars") { do_tests_for((signed char){}); }
+            SECTION("uchars") { do_tests_for((unsigned char){}); }
+            SECTION("floats") { do_tests_for(float{}); }
+            SECTION("doubles") { do_tests_for(double{}); }
+        }
+
+        SECTION("floats") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+
+                check(std::array{T{1.1}}, "1.1");
+                check(std::array{T{1.1}, T{1.2}}, "1.1", "1.2");
+                check(std::array{T{1.1}, T{1.2}, T{1.3}}, "1.1", "1.2", "1.3");
+                check(std::array{T{1.1}, T{1.2}, T{1.3}, T{1.4}}, "1.1", "1.2", "1.3", "1.4");
+            };
+
+            SECTION("floats") { do_tests_for(float{}); }
+            SECTION("doubles") { do_tests_for(double{}); }
+        }
+
+        SECTION("strings") {
+
+            check(std::array{"e1"}, "e1");
+            check(std::array{"e1", "e2"}, "e1", "e2");
+            check(std::array{"e1", "e2", "e3"}, "e1", "e2", "e3");
+            check(std::array{"e1", "e2", "e3", "e4"}, "e1", "e2", "e3", "e4");
+        }
     }
 
-    SECTION("Small floats") {
-
-        auto do_tests_for = [&](auto t) {
+    SECTION("Must fail") {
+        auto check = [&](auto t, auto... argv_pack) {
             using T = decltype(t);
+            char const *const argv[] = {argv_pack...};
+            int argc = size(argv);
 
-            check(std::array{T{1.1}}, "1.1");
-            check(std::array{T{1.1}, T{1.2}}, "1.1", "1.2");
-            check(std::array{T{1.1}, T{1.2}, T{1.3}}, "1.1", "1.2", "1.3");
-            check(std::array{T{1.1}, T{1.2}, T{1.3}, T{1.4}}, "1.1", "1.2", "1.3", "1.4");   
+            const auto result = carp::unwrapper<T>::get(argc, argv);
+            if (result) {
+                std::cout << "\nargv = ";
+                for (auto av : argv)
+                    std::cout << *av << ", ";
+                std::cout << "result = {";
+                for (auto r : *result)
+                    std::cout << r << ", ";
+                std::cout << "}";
+            }
+            REQUIRE((!result && std::is_same_v<T const &, decltype(*result)>));
         };
 
-        SECTION("floats") { do_tests_for(float{}); }
-        SECTION("doubles") { do_tests_for(double{}); }
-    }
+        SECTION("integers") {
 
-    SECTION("strings") {
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
 
-        check(std::array{"e1"}, "e1");
-        check(std::array{"e1", "e2"}, "e1", "e2");
-        check(std::array{"e1", "e2", "e3"}, "e1", "e2", "e3");
-        check(std::array{"e1", "e2", "e3", "e4"}, "e1", "e2", "e3", "e4");
+                check(std::array{T{}}, "1x");
+                check(std::array{T{}}, "0x1");
+                check(std::array{T{}, T{}}, "1", "0x2");
+                check(std::array{T{}, T{}}, "1", "2x");
+                check(std::array{T{}, T{}}, "0x1", "2");
+                check(std::array{T{}, T{}}, "1u", "2");
+                check(std::array{T{}, T{}, T{}}, "0x1", "2", "3");
+                check(std::array{T{}, T{}, T{}}, "1", "0x2", "3");
+                check(std::array{T{}, T{}, T{}}, "1", "2x", "3");
+                check(std::array{T{}, T{}, T{}}, "1", "2", "0x3");
+                check(std::array{T{}, T{}, T{}}, "1", "2", "3x");
+                check(std::array{T{}, T{}, T{}}, "1", "2",
+                      "300000000000000000000000000000000000000000000000000");
+                check(std::array{T{}, T{}, T{}, T{}}, "1x", "2", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "0x1", "2", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2x", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "0x2", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "3x", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "0x3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "3", "4x");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "3", "0x4");
+            };
+
+            SECTION("ints") { do_tests_for(int{}); }
+            SECTION("uints") { do_tests_for(unsigned{}); }
+            SECTION("longs") { do_tests_for(long{}); }
+            SECTION("ulongs") { do_tests_for((unsigned long){}); }
+            SECTION("llongs") { do_tests_for((long long){}); }
+            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+            SECTION("shorts") { do_tests_for(short{}); }
+            SECTION("ushorts") { do_tests_for((unsigned short){}); }
+            SECTION("chars") { do_tests_for(char{}); }
+            SECTION("schars") { do_tests_for((signed char){}); }
+            SECTION("uchars") { do_tests_for((unsigned char){}); }
+        }
+
+        SECTION("floats") {
+
+            auto do_tests_for = [&](auto t) {
+                using T = decltype(t);
+
+                check(std::array{T{}}, "1x");
+                check(std::array{T{}}, "0x1");
+                check(std::array{T{}, T{}}, "1", "0x2");
+                check(std::array{T{}, T{}}, "1", "2x");
+                check(std::array{T{}, T{}}, "0x1", "2");
+                check(std::array{T{}, T{}}, "1u", "2");
+                check(std::array{T{}, T{}, T{}}, "0x1", "2", "3");
+                check(std::array{T{}, T{}, T{}}, "1", "0x2", "3");
+                check(std::array{T{}, T{}, T{}}, "1", "2x", "3");
+                check(std::array{T{}, T{}, T{}}, "1", "2", "0x3");
+                check(std::array{T{}, T{}, T{}}, "1", "2", "3x");
+                check(std::array{T{}, T{}, T{}, T{}}, "1x", "2", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "0x1", "2", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2x", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "0x2", "3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "3x", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "0x3", "4");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "3", "4x");
+                check(std::array{T{}, T{}, T{}, T{}}, "1", "2", "3", "0x4");
+            };
+
+            SECTION("floats") { do_tests_for(float{}); }
+            SECTION("doubles") { do_tests_for(double{}); }
+            SECTION("Large floats") {
+                check(std::array{float{}},
+                      "200000000000000000000000000000000000000000000");
+                check(std::array{float{}},
+                      "999999999999999999999999999999999999999999999999999999999999999");
+                check(std::array{float{}},
+                      ("1" + std::to_string(std::numeric_limits<float>::max())).c_str());
+
+                check(std::array{float{}, float{}}, "1",
+                      "200000000000000000000000000000000000000000000");
+                check(std::array{float{}, float{}},
+                      "999999999999999999999999999999999999999999999999999999999999999", "1");
+                check(std::array{float{}},
+                      ("1" + std::to_string(std::numeric_limits<float>::max())).c_str());
+            }
+            SECTION("Large doubles") {
+                check(std::array{double{}, double{}}, "1",
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999"
+                      "999999999999999999999999999999999999999999999999999999999999999");
+                check(std::array{double{}, double{}},
+                      ("1" + std::to_string(std::numeric_limits<double>::max())).c_str(), "1");
+            }
+        }
     }
 }
 
