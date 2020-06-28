@@ -1,6 +1,5 @@
 #include <carp.h>
 #include <catch.hpp>
-#include <iostream>
 
 using namespace std::literals::string_view_literals;
 
@@ -870,15 +869,6 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
             int argc = size(argv);
 
             const auto result = carp::unwrapper<T>::get(argc, argv);
-            if (result) {
-                std::cout << "\nargv = ";
-                for (auto av : argv)
-                    std::cout << *av << ", ";
-                std::cout << "result = {";
-                for (auto r : *result)
-                    std::cout << r << ", ";
-                std::cout << "}";
-            }
             REQUIRE((!result && std::is_same_v<T const &, decltype(*result)>));
         };
 

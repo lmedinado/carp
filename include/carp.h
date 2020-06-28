@@ -97,7 +97,6 @@ struct str_to_num<T, std::void_t<decltype(std::from_chars(nullptr, nullptr, std:
         return (ec == std::errc() && p == str_end) ? std::optional<T>{result} : std::nullopt;
     }
 };
-
 } // namespace detail
 
 template <typename T, typename = void>
@@ -312,5 +311,4 @@ private:
 
 template <typename T>
 constexpr auto required = std::optional<T>();
-
 } // namespace carp
