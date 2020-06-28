@@ -33,61 +33,62 @@ int main(int argc, char *argv[]) {
     auto v = args["-v"] | std::array{"tiger", "auroch"};
 
     if (a) {
-        std::cout << "\na = " << *a;
+        std::cout << "\na = " << *a << ", ";
     } else {
         std::cout << "\nI need a valid value for 'a'.\n";
         ok = false;
     }
 
     if (b) {
-        std::cout << ", b = " << *b;
+        std::cout << "b = " << *b << ", ";
     } else {
         std::cout << "\nI need a valid value for 'b'.";
         ok = false;
     }
 
     if (c) {
-        std::cout << ", c = " << *c;
+        std::cout << "c = " << *c << ", ";
     } else {
         std::cout << "\nI need a valid value for 'c'.";
         ok = false;
     }
     
     if (d) {
-        std::cout << ", d = " << *d;
+        std::cout << "d = " << *d << ", ";
     } else {
         std::cout << "\nI need a valid value for 'd'.";
         ok = false;
     }
     
     if (e) {
-        std::cout << ", e = " << *e;
+        std::cout << "e = " << *e << ", ";
     } else {
         std::cout << "\nI need a valid value for 'e'.";
         ok = false;
     }
 
 
-    std::cout << std::boolalpha <<", -s = " << s;
+    std::cout << std::boolalpha <<"\n-s = " << s << ", ";
 
-    if (t)
-        std::cout << "\n-t = " << *t;
-    else
+    if (t) {
+        std::cout << "-t = " << *t << ", ";
+    } else {
         std::cout << "\nmissing -t";
+    }
 
     if (u) {
-        std::cout << ", -u = {";
+        std::cout << "-u = {";
         for (auto a : *u)
             std::cout << a << ", ";
-        std::cout << "}";
+        std::cout << "}, ";
     } else {
         std::cout << "\nmissing -u";
     }
     if (v) {
-        std::cout << ", -v = {";
+        std::cout << "-v = {";
         for (auto a : *v)
             std::cout << a << ", ";
-        std::cout << "}";
+        std::cout << "}, ";
     } else
         std::cout << "\nmissing -v";
 
