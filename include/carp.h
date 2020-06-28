@@ -54,6 +54,10 @@ namespace detail {
 template <typename T, typename = void>
 struct str_to_num {
     static std::optional<T> get(char const *str, char const *str_end) {
+
+        if ((str_end - str) > 2 && str[0] == '0' && std::tolower(str[1]) == 'x')
+            return std::nullopt;
+
         char *p = nullptr;
         errno = 0;
 
@@ -80,7 +84,7 @@ struct str_to_num {
             }
         }();
 
-        return (!errno && p != str_end - 1) ? std::optional<T>{result} : std::nullopt;
+        return (!errno && p == str_end) ? std::optional<T>{result} : std::nullopt;
     }
 };
 
