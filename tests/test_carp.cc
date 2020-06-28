@@ -85,7 +85,7 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
     });
 
     auto do_tests_for = [&](bool const(&f)[4], auto... argv_pack) {
-        char const *const argv[] = {argv_pack...};
+        char const *const argv[] = {"program", argv_pack...};
         int argc = size(argv);
         auto [ok, args] = parser.parse(argc, argv);
 
@@ -97,46 +97,47 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
         REQUIRE(args["-v"] == f[3]);
     };
 
-    SECTION("None set") { do_tests_for({false, false, false, false}, "program"); }
+    SECTION("None set") { do_tests_for({false, false, false, false}); }
 
     SECTION("One set") {
-        do_tests_for({true, false, false, false}, "program", "-s");
-        do_tests_for({false, true, false, false}, "program", "-t");
-        do_tests_for({false, false, true, false}, "program", "-u");
-        do_tests_for({false, false, false, true}, "program", "-v");
+        do_tests_for({true, false, false, false}, "-s");
+        do_tests_for({false, true, false, false}, "-t");
+        do_tests_for({false, false, true, false}, "-u");
+        do_tests_for({false, false, false, true}, "-v");
     }
 
     SECTION("Two set") {
-        do_tests_for({true, true, false, false}, "program", "-s", "-t");
-        do_tests_for({true, false, true, false}, "program", "-s", "-u");
-        do_tests_for({true, false, false, true}, "program", "-s", "-v");
+        do_tests_for({true, true, false, false}, "-s", "-t");
+        do_tests_for({true, false, true, false}, "-s", "-u");
+        do_tests_for({true, false, false, true}, "-s", "-v");
 
-        do_tests_for({true, true, false, false}, "program", "-t", "-s");
-        do_tests_for({false, true, true, false}, "program", "-t", "-u");
-        do_tests_for({false, true, false, true}, "program", "-t", "-v");
+        do_tests_for({true, true, false, false}, "-t", "-s");
+        do_tests_for({false, true, true, false}, "-t", "-u");
+        do_tests_for({false, true, false, true}, "-t", "-v");
 
-        do_tests_for({true, false, true, false}, "program", "-u", "-s");
-        do_tests_for({false, true, true, false}, "program", "-u", "-t");
-        do_tests_for({false, false, true, true}, "program", "-u", "-v");
+        do_tests_for({true, false, true, false}, "-u", "-s");
+        do_tests_for({false, true, true, false}, "-u", "-t");
+        do_tests_for({false, false, true, true}, "-u", "-v");
 
-        do_tests_for({true, false, false, true}, "program", "-v", "-s");
-        do_tests_for({false, true, false, true}, "program", "-v", "-t");
-        do_tests_for({false, false, true, true}, "program", "-v", "-u");
+        do_tests_for({true, false, false, true}, "-v", "-s");
+        do_tests_for({false, true, false, true}, "-v", "-t");
+        do_tests_for({false, false, true, true}, "-v", "-u");
     }
 
     SECTION("Three set") {
-        do_tests_for({true, true, true, false}, "program", "-s", "-t", "-u");
-        do_tests_for({true, true, false, true}, "program", "-s", "-t", "-v");
-        do_tests_for({true, false, true, true}, "program", "-s", "-u", "-v");
-        do_tests_for({false, true, true, true}, "program", "-t", "-u", "-v");
+        do_tests_for({true, true, true, false}, "-s", "-t", "-u");
+        do_tests_for({true, true, false, true}, "-s", "-t", "-v");
+        do_tests_for({true, false, true, true}, "-s", "-u", "-v");
+        do_tests_for({false, true, true, true}, "-t", "-u", "-v");
     }
 
     SECTION("Four set") {
-        do_tests_for({true, true, true, true}, "program", "-s", "-t", "-u", "-v");
+        do_tests_for({true, true, true, true}, "-s", "-t", "-u", "-v");
     }
 }
 
 TEST_CASE("All together", "[general]") {
+    using std::size;
 
     constexpr auto parser =
         carp::parser({{"a", "'a', a required integer"},
@@ -149,36 +150,446 @@ TEST_CASE("All together", "[general]") {
                       {"-u", "'u', a switch taking two integers as extra arguments", 2},
                       {"-v", "'v', a switch taking two strings as extra arguments", 2}});
 
+    SECTION("must succeed") {
+
+        auto test_permutation = [&](auto... argv_pack) {
+            char const *const argv[] = {"program", argv_pack...};
+            int argc = size(argv);
+            auto [ok, args] = parser.parse(argc, argv);
+
+            auto a = args["a"] | carp::required<int>;
+            auto b = args["b"] | "zebra";
+            auto c = args["c"] | 0;
+            auto d = args["d"] | 1.3;
+            auto e = args["e"] | 2.5f;
+
+            auto s = args["-s"];
+            auto t = args["-t"] | "none";
+            auto u = args["-u"] | std::array{0, 0};
+            auto v = args["-v"] | std::array{"tiger", "auroch"};
+
+            REQUIRE(ok);
+            REQUIRE((a && *a == 10));
+            REQUIRE((b && *b == "zaga"));
+            REQUIRE((c && *c == 6));
+            REQUIRE((d && *d == 3.14159));
+            REQUIRE((e && *e == 4.3f));
+            REQUIRE((s && *(s | "none") == "-s"));
+            REQUIRE((t && *t == "cartwheel"));
+            REQUIRE((u && *u == std::array{1, 2}));
+            REQUIRE((v && *v == std::array{"asd", "asd"}));
+        };
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3"               //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",               //
+                         "-t", "cartwheel",  //
+                         "-s",               //
+                         "zaga",             //
+                         "6",                //
+                         "-v", "asd", "asd", //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-u", "1", "2"      //
+        );
+    }
+
     SECTION("must fail") {
 
-        char const *const argv[] = {"program", "10", "zaga", "6",  "3.14159", "4.3",
-                                    "7",       "7",  "-s",   "7",  "-t",      "3",
-                                    "-u",      "1",  "2",    "-v", "asd",     "asd"};
-        int argc = std::size(argv);
+        auto test_permutation = [&](auto... argv_pack) {
+            char const *const argv[] = {"program", argv_pack...};
+            int argc = size(argv);
+            auto [ok, args] = parser.parse(argc, argv);
 
-        auto [ok, args] = parser.parse(argc, argv);
+            auto a = args["a"] | carp::required<int>;
+            auto b = args["b"] | "zebra";
+            auto c = args["c"] | 0;
+            auto d = args["d"] | 1.3;
+            auto e = args["e"] | 2.5f;
 
-        auto a = args["a"] | carp::required<int>;
-        auto b = args["b"] | "zebra";
-        auto c = args["c"] | 0;
-        auto d = args["d"] | 1.3;
-        auto e = args["e"] | 2.5f;
+            auto s = args["-s"];
+            auto t = args["-t"] | "none";
+            auto u = args["-u"] | std::array{0, 0};
+            auto v = args["-v"] | std::array{"tiger", "auroch"};
 
-        auto s = args["-s"];
-        auto t = args["-t"] | "none";
-        auto u = args["-u"] | std::array{0, 0};
-        auto v = args["-v"] | std::array{"tiger", "auroch"};
+            REQUIRE(!ok);
+            REQUIRE((a && *a == 10));
+            REQUIRE((b && *b == "zaga"));
+            REQUIRE((c && *c == 6));
+            REQUIRE((d && *d == 3.14159));
+            REQUIRE((e && *e == 4.3f));
+            REQUIRE((s && *(s | "none") == "-s"));
+            REQUIRE((t && *t == "cartwheel"));
+            REQUIRE((u && *u == std::array{1, 2}));
+            REQUIRE((v && *v == std::array{"asd", "asd"}));
+        };
 
-        REQUIRE(ok == false);
-        REQUIRE((a && *a == 10));
-        REQUIRE((b && *b == "zaga"));
-        REQUIRE((c && *c == 6));
-        REQUIRE((d && *d == 3.14159));
-        REQUIRE((e && *e == 4.3f));
-        REQUIRE((s && *(s | "none") == "-s"));
-        REQUIRE((t && *t == "3"));
-        REQUIRE((u && *u == std::array{1, 2}));
-        REQUIRE((v && *v == std::array{"asd", "asd"}));
+        /* one extra arg */
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "extra",           //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra"             //
+        );
+
+        test_permutation("10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "extra"             //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-s",              //
+                         "extra",           //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",               //
+                         "-t", "cartwheel",  //
+                         "-s",               //
+                         "zaga",             //
+                         "6",                //
+                         "-v", "asd", "asd", //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-u", "1", "2",     //
+                         "extra"             //
+        );
+
+        /* two extra args */
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "extra",           //
+                         "extra",           //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra",            //
+                         "extra"             //
+        );
+
+        test_permutation("10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "extra",            //
+                         "extra"             //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "extra",           //
+                         "-s",              //
+                         "extra",           //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",               //
+                         "-t", "cartwheel",  //
+                         "-s",               //
+                         "zaga",             //
+                         "6",                //
+                         "-v", "asd", "asd", //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra",            //
+                         "-u", "1", "2",     //
+                         "extra"             //
+        );
+
+        /* three extra args */
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "extra",           //
+                         "extra",           //
+                         "extra",           //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra",            //
+                         "extra",            //
+                         "extra"             //
+        );
+
+        test_permutation("10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "extra",            //
+                         "extra",            //
+                         "extra"             //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "extra",           //
+                         "extra",           //
+                         "-s",              //
+                         "extra",           //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",               //
+                         "-t", "cartwheel",  //
+                         "-s",               //
+                         "zaga",             //
+                         "6",                //
+                         "-v", "asd", "asd", //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra",            //
+                         "-u", "1", "2",     //
+                         "extra",            //
+                         "extra"             //
+        );
+
+        /* one unknown switch */
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-extra",          //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-extra"            //
+        );
+
+        test_permutation("10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "-extra"            //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-s",              //
+                         "-extra",          //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",               //
+                         "-t", "cartwheel",  //
+                         "-s",               //
+                         "zaga",             //
+                         "6",                //
+                         "-v", "asd", "asd", //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-u", "1", "2",     //
+                         "-extra"            //
+        );
+
+        /* one extra arg, one unknown switch */
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-extra",          //
+                         "extra",           //
+                         "-s",              //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra",            //
+                         "-extra"            //
+        );
+
+        test_permutation("10",               //
+                         "zaga",             //
+                         "6",                //
+                         "3.14159",          //
+                         "4.3",              //
+                         "-s",               //
+                         "-t", "cartwheel",  //
+                         "-u", "1", "2",     //
+                         "-v", "asd", "asd", //
+                         "-extra",           //
+                         "extra"             //
+        );
+
+        test_permutation("10",              //
+                         "zaga",            //
+                         "6",               //
+                         "3.14159",         //
+                         "4.3",             //
+                         "-extra",          //
+                         "-s",              //
+                         "extra",           //
+                         "-t", "cartwheel", //
+                         "-u", "1", "2",    //
+                         "-v", "asd", "asd" //
+        );
+
+        test_permutation("10",               //
+                         "-t", "cartwheel",  //
+                         "-s",               //
+                         "zaga",             //
+                         "6",                //
+                         "-v", "asd", "asd", //
+                         "3.14159",          //
+                         "4.3",              //
+                         "extra",            //
+                         "-u", "1", "2",     //
+                         "-extra"            //
+        );
     }
 }
 
