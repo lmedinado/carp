@@ -3,6 +3,14 @@
 
 using namespace std::literals::string_view_literals;
 
+using unsigned_long = unsigned long;
+using long_long = long long;
+using unsigned_long_long = unsigned long long;
+using unsigned_short = unsigned short;
+using signed_char = signed char;
+using unsigned_char = unsigned char;
+using long_double = long double;
+
 TEST_CASE("Basic positional functionality", "[basic_positional]") {
 
     constexpr auto parser = carp::parser({
@@ -15,11 +23,8 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
     char const *const argv[] = {"program", "0", "1", "2", "3"};
     int argc = std::size(argv);
 
-    auto [ok_, args_] = parser.parse(argc, argv);
-    auto ok = ok_;
-    auto args = args_;
-
-    REQUIRE(ok);
+    auto args = parser.parse(argc, argv);
+    REQUIRE(args.ok);
 
     SECTION("const chars") {
         auto a = args["a"] | "";
@@ -27,10 +32,10 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
         auto c = args["c"] | "";
         auto d = args["d"] | "";
 
-        REQUIRE((a && *a == "0" && std::is_same_v<char const *&, decltype(*a)>));
-        REQUIRE((b && *b == "1" && std::is_same_v<char const *&, decltype(*b)>));
-        REQUIRE((c && *c == "2" && std::is_same_v<char const *&, decltype(*c)>));
-        REQUIRE((d && *d == "3" && std::is_same_v<char const *&, decltype(*d)>));
+        REQUIRE((a && *a == "0"sv && std::is_same_v<char const *&, decltype(*a)>));
+        REQUIRE((b && *b == "1"sv && std::is_same_v<char const *&, decltype(*b)>));
+        REQUIRE((c && *c == "2"sv && std::is_same_v<char const *&, decltype(*c)>));
+        REQUIRE((d && *d == "3"sv && std::is_same_v<char const *&, decltype(*d)>));
     }
 
     SECTION("string_views") {
@@ -62,14 +67,14 @@ TEST_CASE("Basic positional functionality", "[basic_positional]") {
     SECTION("ints") { do_tests_for(int{}); }
     SECTION("uints") { do_tests_for(unsigned{}); }
     SECTION("longs") { do_tests_for(long{}); }
-    SECTION("ulongs") { do_tests_for((unsigned long){}); }
-    SECTION("llongs") { do_tests_for((long long){}); }
-    SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+    SECTION("ulongs") { do_tests_for(unsigned_long{}); }
+    SECTION("llongs") { do_tests_for(long_long{}); }
+    SECTION("ullongs") { do_tests_for(unsigned_long_long{}); }
     SECTION("shorts") { do_tests_for(short{}); }
-    SECTION("ushorts") { do_tests_for((unsigned short){}); }
+    SECTION("ushorts") { do_tests_for(unsigned_short{}); }
     SECTION("chars") { do_tests_for(char{}); }
-    SECTION("schars") { do_tests_for((signed char){}); }
-    SECTION("uchars") { do_tests_for((unsigned char){}); }
+    SECTION("schars") { do_tests_for(signed_char{}); }
+    SECTION("uchars") { do_tests_for(unsigned_char{}); }
     SECTION("floats") { do_tests_for(float{}); }
     SECTION("doubles") { do_tests_for(double{}); }
 }
@@ -87,9 +92,9 @@ TEST_CASE("Basic boolean switch functionality", "[basic_bool_switch]") {
     auto do_tests_for = [&](bool const(&f)[4], auto... argv_pack) {
         char const *const argv[] = {"program", argv_pack...};
         int argc = size(argv);
-        auto [ok, args] = parser.parse(argc, argv);
+        auto args = parser.parse(argc, argv);
 
-        REQUIRE(ok);
+        REQUIRE(args.ok);
 
         REQUIRE(args["-s"] == f[0]);
         REQUIRE(args["-t"] == f[1]);
@@ -155,7 +160,7 @@ TEST_CASE("All together", "[general]") {
         auto test_permutation = [&](auto... argv_pack) {
             char const *const argv[] = {"program", argv_pack...};
             int argc = size(argv);
-            auto [ok, args] = parser.parse(argc, argv);
+            auto args = parser.parse(argc, argv);
 
             auto a = args["a"] | carp::required<int>;
             auto b = args["b"] | "zebra";
@@ -168,14 +173,14 @@ TEST_CASE("All together", "[general]") {
             auto u = args["-u"] | std::array{0, 0};
             auto v = args["-v"] | std::array{"tiger", "auroch"};
 
-            REQUIRE(ok);
+            REQUIRE(args.ok);
             REQUIRE((a && *a == 10));
-            REQUIRE((b && *b == "zaga"));
+            REQUIRE((b && *b == "zaga"sv));
             REQUIRE((c && *c == 6));
             REQUIRE((d && *d == 3.14159));
             REQUIRE((e && *e == 4.3f));
-            REQUIRE((s && *(s | "none") == "-s"));
-            REQUIRE((t && *t == "cartwheel"));
+            REQUIRE((s && *(s | "none") == "-s"sv));
+            REQUIRE((t && *t == "cartwheel"sv));
             REQUIRE((u && *u == std::array{1, 2}));
             REQUIRE((v && *v == std::array{"asd", "asd"}));
         };
@@ -241,7 +246,7 @@ TEST_CASE("All together", "[general]") {
         auto test_permutation = [&](auto... argv_pack) {
             char const *const argv[] = {"program", argv_pack...};
             int argc = size(argv);
-            auto [ok, args] = parser.parse(argc, argv);
+            auto args = parser.parse(argc, argv);
 
             auto a = args["a"] | carp::required<int>;
             auto b = args["b"] | "zebra";
@@ -254,14 +259,14 @@ TEST_CASE("All together", "[general]") {
             auto u = args["-u"] | std::array{0, 0};
             auto v = args["-v"] | std::array{"tiger", "auroch"};
 
-            REQUIRE(!ok);
+            REQUIRE(!args.ok);
             REQUIRE((a && *a == 10));
-            REQUIRE((b && *b == "zaga"));
+            REQUIRE((b && *b == "zaga"sv));
             REQUIRE((c && *c == 6));
             REQUIRE((d && *d == 3.14159));
             REQUIRE((e && *e == 4.3f));
-            REQUIRE((s && *(s | "none") == "-s"));
-            REQUIRE((t && *t == "cartwheel"));
+            REQUIRE((s && *(s | "none") == "-s"sv));
+            REQUIRE((t && *t == "cartwheel"sv));
             REQUIRE((u && *u == std::array{1, 2}));
             REQUIRE((v && *v == std::array{"asd", "asd"}));
         };
@@ -627,9 +632,9 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
 
             SECTION("ints") { do_tests_for(int{}); }
             SECTION("longs") { do_tests_for(long{}); }
-            SECTION("llongs") { do_tests_for((long long){}); }
+            SECTION("llongs") { do_tests_for(long_long{}); }
             SECTION("shorts") { do_tests_for(short{}); }
-            SECTION("schars") { do_tests_for((signed char){}); }
+            SECTION("schars") { do_tests_for(signed_char{}); }
             SECTION("floats") { do_tests_for(float{}); }
             SECTION("doubles") { do_tests_for(double{}); }
         }
@@ -650,10 +655,10 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
             };
 
             SECTION("uints") { do_tests_for(unsigned{}); }
-            SECTION("ulongs") { do_tests_for((unsigned long){}); }
-            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
-            SECTION("ushorts") { do_tests_for((unsigned short){}); }
-            SECTION("uchars") { do_tests_for((unsigned char){}); }
+            SECTION("ulongs") { do_tests_for(unsigned_long{}); }
+            SECTION("ullongs") { do_tests_for(unsigned_long_long{}); }
+            SECTION("ushorts") { do_tests_for(unsigned_short{}); }
+            SECTION("uchars") { do_tests_for(unsigned_char{}); }
         }
 
         SECTION("Small floats") {
@@ -714,9 +719,9 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
 
             SECTION("ints") { do_tests_for(int{}); }
             SECTION("longs") { do_tests_for(long{}); }
-            SECTION("llongs") { do_tests_for((long long){}); }
+            SECTION("llongs") { do_tests_for(long_long{}); }
             SECTION("shorts") { do_tests_for(short{}); }
-            SECTION("schars") { do_tests_for((signed char){}); }
+            SECTION("schars") { do_tests_for(signed_char{}); }
         }
 
         SECTION("Unsigned integers") {
@@ -747,10 +752,10 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
             };
 
             SECTION("uints") { do_tests_for(unsigned{}); }
-            SECTION("ulongs") { do_tests_for((unsigned long){}); }
-            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
-            SECTION("ushorts") { do_tests_for((unsigned short){}); }
-            SECTION("uchars") { do_tests_for((unsigned char){}); }
+            SECTION("ulongs") { do_tests_for(unsigned_long{}); }
+            SECTION("ullongs") { do_tests_for(unsigned_long_long{}); }
+            SECTION("ushorts") { do_tests_for(unsigned_short{}); }
+            SECTION("uchars") { do_tests_for(unsigned_char{}); }
         }
 
         SECTION("floats") {
@@ -844,14 +849,14 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
             SECTION("ints") { do_tests_for(int{}); }
             SECTION("uints") { do_tests_for(unsigned{}); }
             SECTION("longs") { do_tests_for(long{}); }
-            SECTION("ulongs") { do_tests_for((unsigned long){}); }
-            SECTION("llongs") { do_tests_for((long long){}); }
-            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+            SECTION("ulongs") { do_tests_for(unsigned_long{}); }
+            SECTION("llongs") { do_tests_for(long_long{}); }
+            SECTION("ullongs") { do_tests_for(unsigned_long_long{}); }
             SECTION("shorts") { do_tests_for(short{}); }
-            SECTION("ushorts") { do_tests_for((unsigned short){}); }
+            SECTION("ushorts") { do_tests_for(unsigned_short{}); }
             SECTION("chars") { do_tests_for(char{}); }
-            SECTION("schars") { do_tests_for((signed char){}); }
-            SECTION("uchars") { do_tests_for((unsigned char){}); }
+            SECTION("schars") { do_tests_for(signed_char{}); }
+            SECTION("uchars") { do_tests_for(unsigned_char{}); }
             SECTION("floats") { do_tests_for(float{}); }
             SECTION("doubles") { do_tests_for(double{}); }
         }
@@ -927,14 +932,14 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
             SECTION("ints") { do_tests_for(int{}); }
             SECTION("uints") { do_tests_for(unsigned{}); }
             SECTION("longs") { do_tests_for(long{}); }
-            SECTION("ulongs") { do_tests_for((unsigned long){}); }
-            SECTION("llongs") { do_tests_for((long long){}); }
-            SECTION("ullongs") { do_tests_for((unsigned long long){}); }
+            SECTION("ulongs") { do_tests_for(unsigned_long{}); }
+            SECTION("llongs") { do_tests_for(long_long{}); }
+            SECTION("ullongs") { do_tests_for(unsigned_long_long{}); }
             SECTION("shorts") { do_tests_for(short{}); }
-            SECTION("ushorts") { do_tests_for((unsigned short){}); }
+            SECTION("ushorts") { do_tests_for(unsigned_short{}); }
             SECTION("chars") { do_tests_for(char{}); }
-            SECTION("schars") { do_tests_for((signed char){}); }
-            SECTION("uchars") { do_tests_for((unsigned char){}); }
+            SECTION("schars") { do_tests_for(signed_char{}); }
+            SECTION("uchars") { do_tests_for(unsigned_char{}); }
         }
 
         SECTION("floats") {
@@ -1014,7 +1019,7 @@ TEST_CASE("Unwrapping tuples", "[unwrap_tuples]") {
         };
 
         check(std::tuple{1, 2u, 3ll, 4ull, short{5}}, "1", "2", "3", "4", "5");
-        check(std::tuple{1, "abc", 3.0, 4.4f, (signed char){-5}}, "1", "abc", "3.", "4.4", "-5");
+        check(std::tuple{1, "abc", 3.0, 4.4f, signed_char{-5}}, "1", "abc", "3.", "4.4", "-5");
     }
 }
 
@@ -1047,9 +1052,9 @@ TEST_CASE("Parsing numbers", "[numeric]") {
 
         SECTION("ints") { do_tests_for(int{}); }
         SECTION("longs") { do_tests_for(long{}); }
-        SECTION("llongs") { do_tests_for((long long){}); }
+        SECTION("llongs") { do_tests_for(long_long{}); }
         SECTION("shorts") { do_tests_for(short{}); }
-        SECTION("schars") { do_tests_for((signed char){}); }
+        SECTION("schars") { do_tests_for(signed_char{}); }
         SECTION("floats") { do_tests_for(float{}); }
         SECTION("doubles") { do_tests_for(double{}); }
     }
@@ -1070,10 +1075,10 @@ TEST_CASE("Parsing numbers", "[numeric]") {
         };
 
         SECTION("uints") { do_tests_for(unsigned{}); }
-        SECTION("ulongs") { do_tests_for((unsigned long){}); }
-        SECTION("ullongs") { do_tests_for((unsigned long long){}); }
-        SECTION("ushorts") { do_tests_for((unsigned short){}); }
-        SECTION("uchars") { do_tests_for((unsigned char){}); }
+        SECTION("ulongs") { do_tests_for(unsigned_long{}); }
+        SECTION("ullongs") { do_tests_for(unsigned_long_long{}); }
+        SECTION("ushorts") { do_tests_for(unsigned_short{}); }
+        SECTION("uchars") { do_tests_for(unsigned_char{}); }
     }
 
     SECTION("Small floats") {
@@ -1115,11 +1120,11 @@ TEST_CASE("Parsing numbers", "[numeric]") {
             auto nbig = std::to_string(std::numeric_limits<big_type>::min());
 
             for (auto big : {pbig, nbig}) {
-                overflow_check(pbig, (signed char){}, big_type{});
+                overflow_check(pbig, signed_char{}, big_type{});
                 overflow_check(pbig, short{}, big_type{});
                 overflow_check(pbig, int{}, big_type{});
                 overflow_check(pbig, long{}, big_type{});
-                overflow_check(pbig, (long long){}, big_type{});
+                overflow_check(pbig, long_long{}, big_type{});
                 overflow_check(pbig + "0", big_type{}, big_type{});
             }
         }
@@ -1130,11 +1135,11 @@ TEST_CASE("Parsing numbers", "[numeric]") {
             auto nbig = std::to_string(std::numeric_limits<big_type>::min());
 
             for (auto big : {pbig, nbig}) {
-                overflow_check(pbig, (unsigned char){}, big_type{});
-                overflow_check(pbig, (unsigned short){}, big_type{});
+                overflow_check(pbig, unsigned_char{}, big_type{});
+                overflow_check(pbig, unsigned_short{}, big_type{});
                 overflow_check(pbig, unsigned{}, big_type{});
-                overflow_check(pbig, (unsigned long){}, big_type{});
-                overflow_check(pbig, (long long){}, big_type{});
+                overflow_check(pbig, unsigned_long{}, big_type{});
+                overflow_check(pbig, long_long{}, big_type{});
                 overflow_check(pbig + "0", big_type{}, big_type{});
             }
         }
