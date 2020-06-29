@@ -130,7 +130,7 @@ struct unwrapper<T, std::enable_if_t<detail::is_tuple<T>>> {
     static constexpr std::optional<T> get_tuple_impl(char const *const *argv,
                                                      std::index_sequence<I...>, Ts...) noexcept {
         auto opts = std::make_tuple(unwrapper<Ts>::get(1, argv + I)...);
-        bool ok = (std::get<I>(opts) && ...);
+        bool ok = (bool(std::get<I>(opts)) && ...);
 
         return ok ? std::optional<T>{{*std::get<I>(opts)...}} : std::nullopt;
     }
@@ -195,28 +195,35 @@ public:
         }
 
         size_t i = 0;
-        for (auto &a : args) {
+        for ([[maybe_unused]] auto &a : args) {
             for (size_t j = ++i; j < N; ++j)
                 assert(a.name != args[j].name && "no repeated names.");
         }
     }
 
     struct parsed_args {
-
+        bool ok = true;
         std::array<labeled_arg, N> args;
 
         struct arg_proxy {
-            labeled_arg const *arg = nullptr;
+            labeled_arg const *arg;
+            bool &ok;
 
             template <typename T>
-            auto operator|(T const &default_value) const noexcept {
-                return arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv)
-                           : default_value;
+            constexpr auto operator|(T const &default_value) const noexcept {
+                auto result = arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv)
+                                  : default_value;
+                if (!result)
+                    ok = false;
+                return result;
             }
 
             template <typename T>
-            std::optional<T> operator|(std::optional<T> const &) const noexcept {
-                return arg ? unwrapper<T>::get(arg->argc, arg->argv) : std::nullopt;
+            constexpr std::optional<T> operator|(std::optional<T> const &) const noexcept {
+                auto result = arg ? unwrapper<T>::get(arg->argc, arg->argv) : std::nullopt;
+                if (!result)
+                    ok = false;
+                return result;
             }
 
             operator bool() const { return !!arg; }
@@ -224,17 +231,16 @@ public:
             arg_proxy &operator=(arg_proxy &&) = delete;
         };
 
-        constexpr arg_proxy operator[](std::string_view name) const noexcept {
+        constexpr arg_proxy operator[](std::string_view name) noexcept {
             auto it = std::find_if(args.begin(), args.end(),
                                    [&](auto &r) { return r.name == name; });
 
-            return {it != args.end() ? &(*it) : nullptr};
+            return {it != args.end() ? &(*it) : nullptr, ok};
         }
     };
 
-    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char const *const *argv) const noexcept {
+    [[nodiscard]] parsed_args parse(int argc, char const *const *argv) const noexcept {
 
-        bool ok = true;
         parsed_args res;
 
         size_t pos_i = 0;
@@ -247,11 +253,11 @@ public:
             if (ai < N) {
                 res.args[ai] = args[ai].parse(end - it, it);
             } else { /* unrecognized switch or too many positionals */
-                ok = false;
+                res.ok = false;
             }
         }
 
-        return {ok, res};
+        return res;
     }
 
     auto usage(std::string_view program_name) const noexcept {
