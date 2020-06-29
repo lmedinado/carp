@@ -39,7 +39,6 @@
 #include <numeric>
 #include <optional>
 #include <ostream>
-#include <string>
 #include <string_view>
 #include <system_error>
 #include <tuple>
@@ -53,9 +52,9 @@ namespace detail {
  * this can be dangerous in other contexts. */
 template <typename T, typename = void>
 struct str_to_num {
-    static std::optional<T> get(char const *str, char const *str_end) {
+    static std::optional<T> get(char const *str, char const *str_end) noexcept {
 
-        if ((str_end - str) > 2 && str[0] == '0' && std::tolower(str[1]) == 'x')
+        if ((str_end - str) > 2 && std::tolower(str[1]) == 'x')
             return std::nullopt;
 
         char *p = nullptr;
@@ -91,24 +90,33 @@ struct str_to_num {
 /* specialization available if the corresponding from_chars overload is present. */
 template <typename T>
 struct str_to_num<T, std::void_t<decltype(std::from_chars(nullptr, nullptr, std::declval<T &>()))>> {
-    static std::optional<T> get(char const *str, char const *str_end) {
+    static std::optional<T> get(char const *str, char const *str_end) noexcept {
         T result;
         auto [p, ec] = std::from_chars(str, str_end, result);
         return (ec == std::errc() && p == str_end) ? std::optional<T>{result} : std::nullopt;
     }
 };
+
+template <typename T>
+constexpr bool is_tuple = false;
+
+template <typename... Ts>
+constexpr bool is_tuple<std::tuple<Ts...>> = true;
+
+template <typename T, size_t N>
+constexpr bool is_tuple<std::array<T, N>> = true;
 } // namespace detail
 
 template <typename T, typename = void>
 struct unwrapper {
-    static std::optional<T> get(int argc, char const *const *argv) {
-        return (argc == 1) ? std::optional<std::decay_t<T>>{argv[0]} : std::nullopt;
+    static std::optional<T> get(int argc, char const *const *argv) noexcept  {
+        return (argc == 1) ? std::optional<T>{argv[0]} : std::nullopt;
     }
 };
 
 template <typename T>
 struct unwrapper<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
-    static std::optional<T> get(int argc, char const *const *argv) {
+    static std::optional<T> get(int argc, char const *const *argv) noexcept {
         if (argc != 1)
             return std::nullopt;
         auto val = std::string_view(argv[0]);
@@ -116,24 +124,25 @@ struct unwrapper<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
     }
 };
 
-namespace detail {
-template <typename T, size_t N, size_t... I>
-auto unwrap_array_impl(char const *const *argv, std::index_sequence<I...>) {
-    bool ok = true;
-    std::optional<T> opt;
-    std::array<T, N> res{(opt = unwrapper<T>::get(1, &argv[I]), //
-                          ok = ok && opt,                       //
-                          opt ? *opt : T{})...};
+template <typename T>
+struct unwrapper<T, std::enable_if_t<detail::is_tuple<T>>> {
+    template <typename... Ts, size_t... I>
+    static constexpr std::optional<T> get_tuple_impl(char const *const *argv,
+                                                     std::index_sequence<I...>, Ts...) noexcept {
+        auto opts = std::make_tuple(unwrapper<Ts>::get(1, argv + I)...);
+        bool ok = (std::get<I>(opts) && ...);
 
-    return ok ? std::optional{res} : std::nullopt;
-}
-} // namespace detail
+        return ok ? std::optional<T>{{*std::get<I>(opts)...}} : std::nullopt;
+    }
+    template <size_t... I>
+    static constexpr std::optional<T> get_tuple(char const *const *argv,
+                                                std::index_sequence<I...> i) noexcept {
+        return get_tuple_impl(argv, i, std::tuple_element_t<I, T>{}...);
+    }
 
-template <typename T, size_t N>
-struct unwrapper<std::array<T, N>> {
-    static std::optional<std::array<T, N>> get(int argc, char const *const *argv) {
-        return (static_cast<size_t>(argc) >= N)
-                   ? detail::unwrap_array_impl<T, N>(argv, std::make_index_sequence<N>{})
+    static std::optional<T> get(int argc, char const *const *argv) noexcept {
+        return (static_cast<size_t>(argc) >= std::tuple_size_v<T>)
+                   ? get_tuple(argv, std::make_index_sequence<std::tuple_size_v<T>>{})
                    : std::nullopt;
     }
 };
@@ -153,7 +162,7 @@ private:
 
         int nargs = 1;
 
-        constexpr labeled_arg parse(int argc, char const *const *&argv) const {
+        constexpr labeled_arg parse(int argc, char const *const *&argv) const noexcept {
 
             argc = std::min(argc, nargs);
             auto cur_argv = argv;
@@ -167,13 +176,13 @@ private:
             return labeled_arg{name, argc, cur_argv};
         }
 
-        constexpr arg() = default;
-        constexpr arg(std::string_view name, std::string_view desc, unsigned nargs = 0)
+        constexpr arg() noexcept = default;
+        constexpr arg(std::string_view name, std::string_view desc, unsigned nargs = 0) noexcept
           : name(name), desc(desc), nargs(1 + nargs) {}
     };
 
 public:
-    constexpr parser(arg(&&arguments)[N]) {
+    constexpr parser(arg(&&arguments)[N]) noexcept {
         for (auto &&ai : arguments) {
             assert(is_valid(ai.name));
             if (!is_switch(ai.name))
@@ -200,13 +209,13 @@ public:
             labeled_arg const *arg = nullptr;
 
             template <typename T>
-            auto operator|(T const &default_value) const {
+            auto operator|(T const &default_value) const noexcept {
                 return arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv)
                            : default_value;
             }
 
             template <typename T>
-            std::optional<T> operator|(std::optional<T> const &) const {
+            std::optional<T> operator|(std::optional<T> const &) const noexcept {
                 return arg ? unwrapper<T>::get(arg->argc, arg->argv) : std::nullopt;
             }
 
@@ -215,7 +224,7 @@ public:
             arg_proxy &operator=(arg_proxy &&) = delete;
         };
 
-        constexpr arg_proxy operator[](std::string_view name) const {
+        constexpr arg_proxy operator[](std::string_view name) const noexcept {
             auto it = std::find_if(args.begin(), args.end(),
                                    [&](auto &r) { return r.name == name; });
 
@@ -223,7 +232,7 @@ public:
         }
     };
 
-    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char const *const *argv) const {
+    [[nodiscard]] std::pair<bool, parsed_args> parse(int argc, char const *const *argv) const noexcept {
 
         bool ok = true;
         parsed_args res;
@@ -245,7 +254,7 @@ public:
         return {ok, res};
     }
 
-    auto usage(std::string_view program_name) const {
+    auto usage(std::string_view program_name) const noexcept {
         return usage_holder{program_name, this};
     }
 
@@ -257,7 +266,7 @@ private:
     };
 
     template <typename stream>
-    friend stream &operator<<(stream &os, const usage_holder &uh) {
+    friend stream &operator<<(stream &os, const usage_holder &uh) noexcept {
         using std::size;
         auto &p = *uh.p;
 
@@ -289,17 +298,17 @@ private:
         return os << "\n";
     }
 
-    static constexpr bool is_switch(std::string_view word) {
+    static constexpr bool is_switch(std::string_view word) noexcept {
         return word.size() >= 2 && word[0] == '-' && !is_digit(word[1]);
     }
 
-    static constexpr bool is_valid(std::string_view word) {
+    static constexpr bool is_valid(std::string_view word) noexcept {
         return !word.empty() && !is_digit(word[0]) && word.find(' ') == std::string_view::npos;
     }
 
     static constexpr bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
-    size_t find_switch(std::string_view word) const {
+    size_t find_switch(std::string_view word) const noexcept {
         return std::distance(begin(args),
                              std::find_if(begin(args) + n_positionals, end(args),
                                           [&](auto &s) { return s.name == word; }));

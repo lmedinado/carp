@@ -797,6 +797,17 @@ TEST_CASE("Unwrapping numbers", "[unwrap_nums]") {
     }
 }
 
+
+template <typename T, size_t... I>
+constexpr auto make_tuple_from_array_impl(T array, std::index_sequence<I...>) {
+    return std::make_tuple(std::get<I>(array)...);
+}
+
+template <typename T>
+constexpr auto make_tuple_from_array(T array) {
+    return make_tuple_from_array_impl(array, std::make_index_sequence<std::tuple_size_v<T>>{});
+}
+
 /* unwrapper tests */
 TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
     using std::pair;
@@ -810,6 +821,13 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
 
             const auto result = carp::unwrapper<T>::get(argc, argv);
             REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
+
+            /* might as well test tuple while we're at it */
+            auto tup_t = make_tuple_from_array(t);
+            using tup_T = decltype(tup_t);
+            const auto t_result = carp::unwrapper<tup_T>::get(argc, argv);
+            REQUIRE((t_result && *t_result == tup_t &&
+                     std::is_same_v<tup_T const &, decltype(*t_result)>));
         };
 
         SECTION("integers") {
@@ -870,6 +888,12 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
 
             const auto result = carp::unwrapper<T>::get(argc, argv);
             REQUIRE((!result && std::is_same_v<T const &, decltype(*result)>));
+
+            /* might as well test tuple while we're at it */
+            auto tup_t = make_tuple_from_array(t);
+            using tup_T = decltype(tup_t);
+            const auto t_result = carp::unwrapper<tup_T>::get(argc, argv);
+            REQUIRE((!t_result && std::is_same_v<tup_T const &, decltype(*t_result)>));
         };
 
         SECTION("integers") {
@@ -973,6 +997,24 @@ TEST_CASE("Unwrapping arrays", "[unwrap_arrays]") {
                       ("1" + std::to_string(std::numeric_limits<double>::max())).c_str(), "1");
             }
         }
+    }
+}
+TEST_CASE("Unwrapping tuples", "[unwrap_tuples]") {
+    using std::pair;
+    using std::size;
+
+    SECTION("Must succeed") {
+        auto check = [&](auto t, auto... argv_pack) {
+            using T = decltype(t);
+            char const *const argv[] = {argv_pack...};
+            int argc = size(argv);
+
+            const auto result = carp::unwrapper<T>::get(argc, argv);
+            REQUIRE((result && *result == t && std::is_same_v<T const &, decltype(*result)>));
+        };
+
+        check(std::tuple{1, 2u, 3ll, 4ull, short{5}}, "1", "2", "3", "4", "5");
+        check(std::tuple{1, "abc", 3.0, 4.4f, (signed char){-5}}, "1", "abc", "3.", "4.4", "-5");
     }
 }
 
