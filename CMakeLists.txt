@@ -6,10 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    add_compile_options(/permissive-)
+    add_compile_options(/permissive- /W4)
 endif ()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-Wall -Wextra -pedantic)
     add_link_options(-static-libstdc++)
+else()
+    add_compile_options(-Wall -Wextra -pedantic)
 endif ()
 
 
@@ -30,5 +33,9 @@ target_link_libraries(test_carp carp catch2)
 
 add_test(NAME test_carp COMMAND test_carp)
 
+# examples
 add_executable(carp_example examples/carp_example.cc)
 target_link_libraries(carp_example carp)
+
+add_executable(terse examples/terse.cc)
+target_link_libraries(terse carp)
