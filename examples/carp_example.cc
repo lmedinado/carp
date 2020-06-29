@@ -15,9 +15,9 @@ int main(int argc, char *argv[]) {
                       {"-u", "'u', a switch taking two integers as extra arguments", 2},
                       {"-v", "'v', a switch taking two strings as extra arguments", 2}});
 
-    auto [ok, args] = parser.parse(argc, argv);
+    auto args = parser.parse(argc, argv);
 
-    if(!ok) {
+    if(!args.ok) {
         std::cout << "\nToo many positional arguments, or unknown options.";
     }
 
@@ -36,35 +36,30 @@ int main(int argc, char *argv[]) {
         std::cout << "\na = " << *a << ", ";
     } else {
         std::cout << "\nI need a valid value for 'a'.\n";
-        ok = false;
     }
 
     if (b) {
         std::cout << "b = " << *b << ", ";
     } else {
         std::cout << "\nI need a valid value for 'b'.";
-        ok = false;
     }
 
     if (c) {
         std::cout << "c = " << *c << ", ";
     } else {
         std::cout << "\nI need a valid value for 'c'.";
-        ok = false;
     }
     
     if (d) {
         std::cout << "d = " << *d << ", ";
     } else {
         std::cout << "\nI need a valid value for 'd'.";
-        ok = false;
     }
     
     if (e) {
         std::cout << "e = " << *e << ", ";
     } else {
         std::cout << "\nI need a valid value for 'e'.";
-        ok = false;
     }
 
 
@@ -92,7 +87,7 @@ int main(int argc, char *argv[]) {
     } else
         std::cout << "\nmissing -v";
 
-    if(!ok) {
+    if(!args.ok) {
         std::cout << "\n" << parser.usage(argv[0]);
         return 1;
     }
