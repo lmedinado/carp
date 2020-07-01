@@ -34,8 +34,8 @@ target_link_libraries(test_carp carp catch2)
 add_test(NAME test_carp COMMAND test_carp)
 
 # examples
-add_executable(carp_example examples/carp_example.cc)
-target_link_libraries(carp_example carp)
+add_executable(full_ex examples/full_ex.cc)
+target_link_libraries(full_ex carp)
 
-add_executable(terse examples/terse.cc)
-target_link_libraries(terse carp)
+add_executable(terse_ex examples/terse_ex.cc)
+target_link_libraries(terse_ex carp)
