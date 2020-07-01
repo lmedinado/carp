@@ -22,7 +22,7 @@ target_include_directories(carp INTERFACE include/)
 # tests
 enable_testing()
 
-set(catch2_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/catch2)
+set(catch2_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/external/catch2)
 add_library(catch2 INTERFACE)
 target_include_directories(catch2 INTERFACE ${catch2_include_dir})
 
