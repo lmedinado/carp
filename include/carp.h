@@ -35,10 +35,10 @@
 #include <cerrno>
 #include <charconv>
 #include <cstdlib>
+#include <iosfwd>
 #include <iterator>
 #include <numeric>
 #include <optional>
-#include <ostream>
 #include <string_view>
 #include <system_error>
 #include <tuple>
