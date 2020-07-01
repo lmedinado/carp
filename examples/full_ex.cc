@@ -1,6 +1,6 @@
 #include <carp.h>
 #include <iostream>
-
+#include "tuple_print.h"
 
 int main(int argc, char *argv[]) {
 
@@ -72,18 +72,12 @@ int main(int argc, char *argv[]) {
     }
 
     if (u) {
-        std::cout << "-u = {";
-        for (auto a : *u)
-            std::cout << a << ", ";
-        std::cout << "}, ";
+        std::cout << "-u = " << *u << ", ";
     } else {
         std::cout << "\nmissing -u";
     }
     if (v) {
-        std::cout << "-v = {";
-        for (auto a : *v)
-            std::cout << a << ", ";
-        std::cout << "}, ";
+        std::cout << "-v = " << *v << ", ";
     } else
         std::cout << "\nmissing -v";
 
