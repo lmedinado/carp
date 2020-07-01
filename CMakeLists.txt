@@ -17,7 +17,7 @@ endif ()
 
 
 add_library(carp INTERFACE)
-target_include_directories(carp INTERFACE include/)
+target_include_directories(carp INTERFACE include/carp/)
 
 # tests
 enable_testing()
