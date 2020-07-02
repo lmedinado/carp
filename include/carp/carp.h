@@ -300,8 +300,8 @@ private:
             std::fill_n(std::ostreambuf_iterator(os), max_size + 1 - size(ai->name), ' ');
             os << ai->desc;
         }
-
-        return os << "\n";
+        os << "\n";
+        return os;
     }
 
     static constexpr bool is_switch(std::string_view word) noexcept {
