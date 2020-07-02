@@ -179,7 +179,7 @@ public:
         }
 
         constexpr arg() noexcept = default;
-        constexpr arg(std::string_view name, std::string_view desc, unsigned nargs = 0) noexcept
+        constexpr arg(std::string_view name, std::string_view desc, size_t nargs = 0) noexcept
           : name(name), desc(desc), nargs(1 + nargs) {}
     };
 
