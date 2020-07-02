@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cctype>
 #include <cerrno>
 #include <charconv>
 #include <cstdlib>
@@ -141,7 +142,7 @@ struct unwrapper<T, std::enable_if_t<detail::is_tuple<T>>> {
     }
 
     static std::optional<T> get(int argc, char const *const *argv) noexcept {
-        return (static_cast<size_t>(argc) >= std::tuple_size_v<T>)
+        return (static_cast<size_t>(argc) == std::tuple_size_v<T>)
                    ? get_tuple(argv, std::make_index_sequence<std::tuple_size_v<T>>{})
                    : std::nullopt;
     }
@@ -152,17 +153,18 @@ class parser {
 private:
     struct labeled_arg {
         std::string_view name;
-        int argc;
-        char const *const *argv;
+        int argc = 0;
+        char const *const *argv = nullptr;
     };
 
+public:
     struct arg {
         std::string_view name;
         std::string_view desc;
 
-        int nargs = 1;
+        ptrdiff_t nargs = 1;
 
-        constexpr labeled_arg parse(int argc, char const *const *&argv) const noexcept {
+        constexpr labeled_arg parse(ptrdiff_t argc, char const *const *&argv) const noexcept {
 
             argc = std::min(argc, nargs);
             auto cur_argv = argv;
@@ -173,7 +175,7 @@ private:
                 cur_argv += 1;
             }
 
-            return labeled_arg{name, argc, cur_argv};
+            return labeled_arg{name, static_cast<int>(argc), cur_argv};
         }
 
         constexpr arg() noexcept = default;
@@ -181,17 +183,15 @@ private:
           : name(name), desc(desc), nargs(1 + nargs) {}
     };
 
-public:
-    constexpr parser(arg(&&arguments)[N]) noexcept {
-        for (auto &&ai : arguments) {
-            assert(is_valid(ai.name));
-            if (!is_switch(ai.name))
-                args[n_positionals++] = ai;
+    constexpr parser(arg const (&arguments)[N]) noexcept {
+        for (auto i = std::begin(arguments), e = std::end(arguments); i < e; ++i) {
+            assert(is_valid(i->name));
+            if (!is_switch(i->name))
+                args[n_positionals++] = *i;
         }
-        for (auto &&ai : arguments) {
-            assert(is_valid(ai.name));
-            if (is_switch(ai.name))
-                args[n_positionals + n_switches++] = ai;
+        for (auto i = std::begin(arguments), e = std::end(arguments); i < e; ++i) {
+            if (is_switch(i->name))
+                args[n_positionals + n_switches++] = *i;
         }
 
         size_t i = 0;
