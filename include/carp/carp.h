@@ -184,12 +184,12 @@ public:
     };
 
     constexpr parser(arg const (&arguments)[N]) noexcept {
-        for (auto i = std::begin(arguments), e = std::end(arguments); i < e; ++i) {
+        for (auto i = std::begin(arguments), e = std::end(arguments); i != e; ++i) {
             assert(is_valid(i->name));
             if (!is_switch(i->name))
                 args[n_positionals++] = *i;
         }
-        for (auto i = std::begin(arguments), e = std::end(arguments); i < e; ++i) {
+        for (auto i = std::begin(arguments), e = std::end(arguments); i != e; ++i) {
             if (is_switch(i->name))
                 args[n_positionals + n_switches++] = *i;
         }
@@ -260,14 +260,16 @@ public:
         return res;
     }
 
-    auto usage(std::string_view program_name) const noexcept {
-        return usage_holder{program_name, this};
+    auto usage(std::string_view program_name, unsigned max_cols = 80) const noexcept {
+        return usage_holder{program_name, this, max_cols};
     }
 
 private:
     struct usage_holder {
         std::string_view program_name;
         parser const *p;
+        unsigned max_cols;
+
         usage_holder &operator=(usage_holder &&) = delete;
     };
 
@@ -297,10 +299,28 @@ private:
                 os << "\n\n  Options:";
 
             os << "\n\t  " << ai->name;
-            std::fill_n(std::ostreambuf_iterator(os), max_size + 1 - size(ai->name), ' ');
-            os << ai->desc;
+            std::fill_n(std::ostreambuf_iterator(os), max_size + 2 - size(ai->name), ' ');
+
+            size_t const max_per_line = uh.max_cols - 13 - max_size;
+            for(size_t i = 0; i < size(ai->desc);) {
+                size_t eol = std::min(size(ai->desc) - i, max_per_line);
+
+                auto this_line = ai->desc.substr(i, eol);
+
+                if (size_t n; ((n = this_line.find('\n')) != std::string_view::npos) ||
+                              (eol == max_per_line &&
+                               (n = this_line.rfind(' ')) != std::string_view::npos)) {
+                    eol = n + 1;
+                }
+
+                if (i && this_line[0] != '\n') {
+                    os << "\n\t  ";
+                    std::fill_n(std::ostreambuf_iterator(os), max_size + 2, ' ');
+                }
+                os << this_line.substr(0, eol);
+                i += eol;
+            }
         }
-        os << "\n";
         return os;
     }
 
