@@ -289,8 +289,8 @@ private:
             os << " " << pi->name;
 
         auto max_size =
-            std::accumulate(p.args.begin(), p.args.end(), size_t{0},
-                            [](auto c, auto &a) { return std::max(c, size(a.name)); });
+            2 + std::accumulate(p.args.begin(), p.args.end(), size_t{0},
+                                [](auto c, auto &a) { return std::max(c, size(a.name)); });
         if (p.n_positionals)
             os << "\n\n  Arguments:";
 
@@ -299,9 +299,9 @@ private:
                 os << "\n\n  Options:";
 
             os << "\n\t  " << ai->name;
-            std::fill_n(std::ostreambuf_iterator(os), max_size + 2 - size(ai->name), ' ');
+            std::fill_n(std::ostreambuf_iterator(os), max_size - size(ai->name), ' ');
 
-            size_t const max_per_line = uh.max_cols - 13 - max_size;
+            size_t const max_per_line = uh.max_cols - 11 - max_size;
             for(size_t i = 0; i < size(ai->desc);) {
                 size_t eol = std::min(size(ai->desc) - i, max_per_line);
 
@@ -310,14 +310,14 @@ private:
                 if (size_t n; ((n = this_line.find('\n')) != std::string_view::npos) ||
                               (eol == max_per_line &&
                                (n = this_line.rfind(' ')) != std::string_view::npos)) {
-                    eol = n + 1;
+                    this_line = this_line.substr(0, eol = n + 1);
                 }
 
                 if (i && this_line[0] != '\n') {
                     os << "\n\t  ";
-                    std::fill_n(std::ostreambuf_iterator(os), max_size + 2, ' ');
+                    std::fill_n(std::ostreambuf_iterator(os), max_size, ' ');
                 }
-                os << this_line.substr(0, eol);
+                os << this_line;
                 i += eol;
             }
         }
