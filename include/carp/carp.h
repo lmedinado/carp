@@ -127,18 +127,13 @@ struct unwrapper<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
 
 template <typename T>
 struct unwrapper<T, std::enable_if_t<detail::is_tuple<T>>> {
-    template <typename... Ts, size_t... I>
-    static constexpr std::optional<T> get_tuple_impl(char const *const *argv,
-                                                     std::index_sequence<I...>, Ts...) noexcept {
-        auto opts = std::make_tuple(unwrapper<Ts>::get(1, argv + I)...);
-        bool ok = (bool(std::get<I>(opts)) && ...);
-
-        return ok ? std::optional<T>{{*std::get<I>(opts)...}} : std::nullopt;
-    }
     template <size_t... I>
     static constexpr std::optional<T> get_tuple(char const *const *argv,
-                                                std::index_sequence<I...> i) noexcept {
-        return get_tuple_impl(argv, i, std::tuple_element_t<I, T>{}...);
+                                                std::index_sequence<I...>) noexcept {
+        auto opts = std::make_tuple(unwrapper<std::tuple_element_t<I, T>>::get(1, argv + I)...);
+        bool ok = (!!std::get<I>(opts) && ...);
+
+        return ok ? std::optional<T>{{*std::get<I>(opts)...}} : std::nullopt;
     }
 
     static std::optional<T> get(int argc, char const *const *argv) noexcept {
@@ -210,9 +205,9 @@ public:
             bool &ok;
 
             template <typename T>
-            constexpr auto operator|(T const &default_value) const noexcept {
-                auto result = arg ? unwrapper<std::decay_t<T const>>::get(arg->argc, arg->argv)
-                                  : default_value;
+            constexpr auto operator|(T default_value) const noexcept {
+                auto result = arg ? unwrapper<T>::get(arg->argc, arg->argv)
+                                  : std::move(default_value);
                 if (!result)
                     ok = false;
                 return result;
