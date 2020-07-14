@@ -110,7 +110,7 @@ constexpr bool is_tuple<std::array<T, N>> = true;
 
 template <typename T, typename = void>
 struct unwrapper {
-    static std::optional<T> get(int argc, char const *const *argv) noexcept  {
+    static std::optional<T> get(int argc, char const *const *argv) noexcept {
         return (argc == 1) ? std::optional<T>{argv[0]} : std::nullopt;
     }
 };
@@ -130,7 +130,8 @@ struct unwrapper<T, std::enable_if_t<detail::is_tuple<T>>> {
     template <size_t... I>
     static constexpr std::optional<T> get_tuple(char const *const *argv,
                                                 std::index_sequence<I...>) noexcept {
-        auto opts = std::make_tuple(unwrapper<std::tuple_element_t<I, T>>::get(1, argv + I)...);
+        auto opts =
+            std::make_tuple(unwrapper<std::tuple_element_t<I, T>>::get(1, argv + I)...);
         bool ok = (!!std::get<I>(opts) && ...);
 
         return ok ? std::optional<T>{{*std::get<I>(opts)...}} : std::nullopt;
@@ -272,8 +273,9 @@ private:
     friend stream &operator<<(stream &os, const usage_holder &uh) noexcept {
         using std::size;
         auto &p = *uh.p;
+        constexpr auto indent = std::string_view{"        "};
 
-        os << "  Usage: ";
+        os << "Usage: ";
         auto const last_slash = uh.program_name.find_last_of("/\\");
         os << uh.program_name.substr(last_slash + 1, uh.program_name.size() - last_slash);
 
@@ -284,32 +286,34 @@ private:
             os << " " << pi->name;
 
         auto max_size =
-            2 + std::accumulate(p.args.begin(), p.args.end(), size_t{0},
+            3 + std::accumulate(p.args.begin(), p.args.end(), size_t{0},
                                 [](auto c, auto &a) { return std::max(c, size(a.name)); });
         if (p.n_positionals)
-            os << "\n\n  Arguments:";
+            os << "\n\nArguments:";
 
         for (auto ai = p.args.begin(); ai != p.args.end(); ++ai) {
             if (ai == p.args.begin() + p.n_positionals)
-                os << "\n\n  Options:";
+                os << "\n\nOptions:";
 
-            os << "\n\t  " << ai->name;
+            os << "\n" << indent << ai->name;
             std::fill_n(std::ostreambuf_iterator(os), max_size - size(ai->name), ' ');
 
-            size_t const max_per_line = uh.max_cols - 11 - max_size;
-            for(size_t i = 0; i < size(ai->desc);) {
+            size_t const max_per_line = uh.max_cols - max_size - size(indent) - 1;
+            for (size_t i = 0; i < size(ai->desc);) {
                 size_t eol = std::min(size(ai->desc) - i, max_per_line);
 
                 auto this_line = ai->desc.substr(i, eol);
 
-                if (size_t n; ((n = this_line.find('\n')) != std::string_view::npos) ||
-                              (eol == max_per_line &&
-                               (n = this_line.rfind(' ')) != std::string_view::npos)) {
+                size_t n;
+                if ((n = this_line.find('\n')) != std::string_view::npos) {
+                    this_line = this_line.substr(0, n);
+                    eol = n + 1;
+                }
+                if (eol == max_per_line && (n = this_line.rfind(' ')) != std::string_view::npos) {
                     this_line = this_line.substr(0, eol = n + 1);
                 }
-
-                if (i && this_line[0] != '\n') {
-                    os << "\n\t  ";
+                if (i) {
+                    os << "\n" << indent;
                     std::fill_n(std::ostreambuf_iterator(os), max_size, ' ');
                 }
                 os << this_line;
