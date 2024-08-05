@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <iosfwd>
 #include <iterator>
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <string_view>
